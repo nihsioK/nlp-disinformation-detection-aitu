@@ -1,7 +1,7 @@
 [project]
 name = "nlp-disinformation-detection-aitu"
 version = "0.1.0"
-description = "Add your description here"
+description = "Hybrid NLP framework for disinformation detection on social networks"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -9,4 +9,33 @@ dependencies = [
     "nltk>=3.9.2",
     "pandas>=2.3.3",
     "seaborn>=0.13.2",
+    "numpy>=1.26.0",
+    "pyyaml>=6.0",
 ]
+
+[project.optional-dependencies]
+ml = [
+    "scikit-learn>=1.5.0",
+    "scipy>=1.13.0",
+    "joblib>=1.4.0",
+    "torch>=2.3.0",
+    "transformers>=4.41.0",
+    "datasets>=2.19.0",
+    "tokenizers>=0.19.0",
+]
+viz = [
+    "matplotlib>=3.10.7",
+    "seaborn>=0.13.2",
+]
+dev = [
+    "pytest>=8.0.0",
+    "jupyter>=1.0.0",
+    "ipykernel>=6.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/disinfo_detection"]

@@ -1,0 +1,50 @@
+liar:
+  train_path: data/train.tsv
+  valid_path: data/valid.tsv
+  test_path: data/test.tsv
+  processed_dir: data/processed
+
+  columns:
+    - id
+    - label
+    - statement
+    - subject
+    - speaker
+    - job
+    - state
+    - party
+    - barely_true_counts
+    - false_counts
+    - half_true_counts
+    - mostly_true_counts
+    - pants_on_fire_counts
+    - context
+
+  label_map:
+    pants-fire: 0
+    "false": 1
+    barely-true: 2
+    half-true: 3
+    mostly-true: 4
+    "true": 5
+
+  label_names:
+    - pants-fire
+    - "false"
+    - barely-true
+    - half-true
+    - mostly-true
+    - "true"
+
+  credibility_cols:
+    - barely_true_counts
+    - false_counts
+    - half_true_counts
+    - mostly_true_counts
+    - pants_on_fire_counts
+
+  metadata_cols:
+    - speaker
+    - job
+    - state
+    - party
