@@ -4,9 +4,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any
 
-import pandas as pd
 import yaml
 
 
@@ -14,6 +12,11 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s â€” %(levelname)s â€
 logger = logging.getLogger(__name__)
 
 CONFIG_PATH = Path("config/dataset.yaml")
+LIAR_URLS = {
+    "train": "https://huggingface.co/datasets/ucsbnlp/liar/resolve/main/train.tsv",
+    "valid": "https://huggingface.co/datasets/ucsbnlp/liar/resolve/main/valid.tsv",
+    "test": "https://huggingface.co/datasets/ucsbnlp/liar/resolve/main/test.tsv",
+}
 
 
 def load_config(config_path: Path = CONFIG_PATH) -> dict:
@@ -37,30 +40,31 @@ def get_split_paths(config: dict) -> dict[str, Path]:
         config: Parsed dataset configuration dictionary.
 
     Returns:
-        Mapping from Hugging Face split names to local TSV paths.
+        Mapping from project split names to local TSV paths.
     """
 
     liar_cfg = config["liar"]
     return {
         "train": Path(liar_cfg["train_path"]),
-        "validation": Path(liar_cfg["valid_path"]),
+        "valid": Path(liar_cfg["valid_path"]),
         "test": Path(liar_cfg["test_path"]),
     }
 
 
-def save_split(dataset: Any, split: str, output_path: Path, columns: list[str]) -> None:
-    """Save one dataset split to a tab-separated file without headers.
+def download_split(url: str, output_path: Path) -> None:
+    """Download one LIAR TSV split and save it to disk.
 
     Args:
-        dataset: Loaded LIAR dataset collection.
-        split: Split name to export.
+        url: Remote TSV download URL.
         output_path: Destination TSV path.
-        columns: Column order required by the project.
     """
 
-    frame = pd.DataFrame(dataset[split])[columns]
-    frame.to_csv(output_path, sep="\t", header=False, index=False)
-    logger.info("Saved %s split to %s", split, output_path)
+    import requests
+
+    response = requests.get(url, timeout=60)
+    response.raise_for_status()
+    output_path.write_bytes(response.content)
+    logger.info("Saved split to %s", output_path)
 
 
 def main() -> None:
@@ -68,21 +72,15 @@ def main() -> None:
 
     config = load_config()
     split_paths = get_split_paths(config)
-    columns = config["liar"]["columns"]
     output_dir = split_paths["train"].parent
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    if all(path.exists() for path in split_paths.values()):
-        logger.info("Data already exists, skipping.")
-        return
-
-    from datasets import load_dataset
-
-    logger.info("Downloading LIAR dataset from Hugging Face.")
-    dataset = load_dataset("liar")
-
+    logger.info("Downloading LIAR TSV files from Hugging Face.")
     for split, output_path in split_paths.items():
-        save_split(dataset, split, output_path, columns)
+        if output_path.exists():
+            logger.info("%s already exists, skipping.", output_path)
+            continue
+        download_split(LIAR_URLS[split], output_path)
 
 
 if __name__ == "__main__":
