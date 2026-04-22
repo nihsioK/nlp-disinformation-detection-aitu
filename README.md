@@ -80,7 +80,26 @@ secondary metrics are accuracy, per-class F1, and the confusion matrix.
 See `AGENTS.md` for the coding conventions, dataset conventions, key design
 decisions, and progress log.
 
-## License and citation
+## License
 
-Citation and license details will be added once the thesis manuscript and
-final results are complete.
+Code in this repository is released under the [MIT License](LICENSE).
+The thesis manuscript, figures, and written content remain under the author's
+copyright and are not covered by the MIT License.
+
+## Citation
+
+If you use this code, please cite:
+
+```bibtex
+@mastersthesis{koishin2027disinfo,
+  author  = {Koishin, Daniyar},
+  title   = {Hybrid NLP Framework for Disinformation Detection in Political Statements},
+  school  = {Astana IT University},
+  year    = {2027},
+  address = {Astana, Kazakhstan},
+  note    = {Program 7M06105}
+}
+```
+
+The BibTeX entry will be updated with final title, page numbers, and the
+associated IEEE SIST 2026 paper reference once the manuscript is finalized.
