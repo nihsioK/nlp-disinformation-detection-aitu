@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Силлабус - NLP Methods for Disinformation Detection</title>
+  <style>
+    body {
+      font-family: "Times New Roman", Times, serif;
+      font-size: 14pt;
+      line-height: 1.35;
+      margin: 36pt;
+      color: #000;
+    }
+    h1, h2, h3 {
+      text-align: center;
+      font-weight: bold;
+      margin: 0 0 12pt 0;
+    }
+    h1 { font-size: 18pt; }
+    h2 { font-size: 16pt; margin-top: 18pt; }
+    h3 { font-size: 14pt; margin-top: 14pt; }
+    p { margin: 0 0 10pt 0; }
+    .center { text-align: center; }
+    .field { margin-bottom: 8pt; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12pt 0;
+    }
+    th, td {
+      border: 1px solid #000;
+      padding: 6pt 8pt;
+      vertical-align: top;
+    }
+    th {
+      font-weight: bold;
+      text-align: center;
+    }
+    ul {
+      margin: 0 0 10pt 20pt;
+    }
+    li {
+      margin-bottom: 4pt;
+    }
+  </style>
+</head>
+<body>
+  <p class="center">Astana IT University</p>
+  <p class="center">School of Software Engineering</p>
+
+  <h1>РАБОЧАЯ УЧЕБНАЯ ПРОГРАММА ДИСЦИПЛИНЫ</h1>
+  <h1>(СИЛЛАБУС)</h1>
+
+  <p class="center">по дисциплине <b>NLP Methods for Disinformation Detection</b></p>
+  <p class="center">для образовательной программы: <b>7M06105 Computer Science and Engineering</b></p>
+  <p class="center">Астана, 2026</p>
+
+  <p class="field"><b>Ф.И.О. преподавателя:</b> Койшин Данияр Абаевич</p>
+  <p class="field"><b>Место и время проведения занятий:</b> Astana IT University, по расписанию</p>
+  <p class="field"><b>Электронная почта:</b> по согласованию</p>
+  <p class="field"><b>Консультационные часы:</b> согласно расписанию СРОП</p>
+
+  <h2>Краткое описание дисциплины</h2>
+  <p>
+    Дисциплина посвящена современным методам обработки естественного языка для выявления
+    дезинформации в социальных сетях и политических текстах. В рамках курса рассматриваются
+    классические подходы к текстовой классификации, методы представления текста, работа с
+    фактчекинговыми датасетами, трансформерные архитектуры, а также подходы, в которых текстовая
+    информация дополняется метаданными о спикере, источнике или контексте распространения
+    сообщения. Особое внимание уделяется не только построению моделей, но и интерпретации
+    результатов, анализу ошибок, вопросам воспроизводимости и ограничениям автоматического
+    выявления дезинформации.
+  </p>
+
+  <h2>Цель дисциплины</h2>
+  <p>
+    Сформировать у магистрантов целостное представление о методах NLP, применяемых для выявления
+    дезинформации, и развить практические навыки работы с данными, построения моделей,
+    экспериментальной оценки и критического анализа результатов.
+  </p>
+
+  <h2>Задачи дисциплины</h2>
+  <ul>
+    <li>изучить основные типы дезинформации и специфику соответствующих текстовых задач;</li>
+    <li>освоить этапы подготовки и анализа датасетов для задач выявления дезинформации;</li>
+    <li>изучить baseline-подходы на основе TF-IDF и классических алгоритмов машинного обучения;</li>
+    <li>рассмотреть современные трансформерные модели, включая BERT и RoBERTa;</li>
+    <li>понять роль контекстных признаков, метаданных и credibility-based features;</li>
+    <li>научиться интерпретировать метрики качества, confusion matrix и результаты error analysis;</li>
+    <li>развить исследовательские навыки, связанные с воспроизводимостью, этикой и подготовкой
+      научного текста.</li>
+  </ul>
+
+  <h2>Ожидаемые результаты обучения</h2>
+  <p>После завершения дисциплины обучающийся должен уметь:</p>
+  <ul>
+    <li>объяснять постановку задач fake news, misinformation и disinformation detection;</li>
+    <li>анализировать датасеты и схемы разметки для текстовой классификации;</li>
+    <li>строить baseline-модели на основе TF-IDF, Naive Bayes, SVM и Random Forest;</li>
+    <li>использовать трансформерные модели для задач классификации текста;</li>
+    <li>сравнивать text-only и hybrid-подходы с точки зрения качества и интерпретируемости;</li>
+    <li>выполнять анализ ошибок и корректно интерпретировать метрики accuracy и macro-F1;</li>
+    <li>подготавливать исследовательские отчеты и презентации по результатам экспериментов.</li>
+  </ul>
+
+  <p><b>Пререквизиты дисциплины:</b> Machine Learning, Natural Language Processing, Python for Data Analysis</p>
+  <p><b>Постреквизиты дисциплины:</b> Research Seminar in AI, Advanced Topics in Applied NLP</p>
+
+  <h2>Модульно-тематический план</h2>
+  <table>
+    <tr>
+      <th style="width:12%;">Модуль</th>
+      <th>Наименование темы</th>
+    </tr>
+    <tr><td>1</td><td>Введение в проблематику дезинформации и постановка задачи текстовой классификации</td></tr>
+    <tr><td>1</td><td>Датасеты для выявления дезинформации: LIAR, FakeNewsNet и особенности разметки</td></tr>
+    <tr><td>1</td><td>Предобработка текста и инженерия признаков для baseline-моделей</td></tr>
+    <tr><td>2</td><td>TF-IDF и классические алгоритмы: Naive Bayes, SVM, Random Forest</td></tr>
+    <tr><td>2</td><td>Оценка качества классификации: accuracy, macro-F1, confusion matrix, error analysis</td></tr>
+    <tr><td>2</td><td>Контекстуальные эмбеддинги и переход к трансформерным моделям</td></tr>
+    <tr><td>3</td><td>BERT, RoBERTa и fine-tuning для задач много-классовой классификации</td></tr>
+    <tr><td>3</td><td>Метаданные, credibility features и hybrid content + context architecture</td></tr>
+    <tr><td>3</td><td>Интерпретация результатов, устойчивость моделей и ограничения датасетов</td></tr>
+    <tr><td>3</td><td>Этические вопросы, воспроизводимость и оформление исследовательских результатов</td></tr>
+  </table>
+
+  <h2>График реализации содержания учебного курса</h2>
+  <table>
+    <tr>
+      <th style="width:8%;">Неделя</th>
+      <th style="width:22%;">Тема</th>
+      <th style="width:28%;">Краткое содержание</th>
+      <th style="width:21%;">Практические задания</th>
+      <th style="width:21%;">СРО</th>
+    </tr>
+    <tr>
+      <td>1</td>
+      <td>Введение в задачу</td>
+      <td>Понятие дезинформации, misinformation, disinformation, особенности социальных сетей</td>
+      <td>Обсуждение примеров и формулировка критериев различия</td>
+      <td>Подготовить краткий обзор по теме</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>Датасеты и разметка</td>
+      <td>Структура LIAR, типы меток, ограничения выборки</td>
+      <td>Разбор схемы полей датасета</td>
+      <td>Сравнить LIAR и FakeNewsNet</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>Предобработка текста</td>
+      <td>Очистка текста, нормализация, отдельные версии текста для baseline и transformer</td>
+      <td>Реализовать базовую предобработку</td>
+      <td>Подготовить описание pipeline</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>TF-IDF и baseline-модели</td>
+      <td>Построение baseline-пайплайна и логика выбора моделей</td>
+      <td>Обучить Naive Bayes, SVM и Random Forest</td>
+      <td>Сравнить метрики моделей</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td>Метрики и анализ ошибок</td>
+      <td>Accuracy, macro-F1, class imbalance, confusion matrix</td>
+      <td>Проанализировать сложные классы</td>
+      <td>Подготовить краткий error analysis</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td>Transformer-подходы</td>
+      <td>BERT, RoBERTa, контекстные представления текста</td>
+      <td>Разобрать настройку fine-tuning</td>
+      <td>Изучить 2-3 статьи по transformer-based detection</td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td>Fine-tuning RoBERTa</td>
+      <td>Подготовка датасета, обучение, логирование результатов</td>
+      <td>Запустить эксперимент и сохранить логи</td>
+      <td>Описать результаты по эпохам</td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td>Hybrid-модели</td>
+      <td>Интеграция текстовых признаков и speaker metadata</td>
+      <td>Сформулировать архитектуру hybrid model</td>
+      <td>Подготовить схему fusion approach</td>
+    </tr>
+    <tr>
+      <td>9</td>
+      <td>Интерпретация результатов</td>
+      <td>Паттерны, тренды, аномалии и выводы по экспериментам</td>
+      <td>Подготовить таблицы и графики</td>
+      <td>Написать аналитический комментарий</td>
+    </tr>
+    <tr>
+      <td>10</td>
+      <td>Этика и научное письмо</td>
+      <td>Риски bias, воспроизводимость, оформление статьи и отчета</td>
+      <td>Разобрать примеры research reporting</td>
+      <td>Подготовить draft abstract</td>
+    </tr>
+  </table>
+
+  <h2>Используемая литература</h2>
+  <p><b>Базовая литература:</b></p>
+  <ol>
+    <li>Wang, W. Y. (2017). Liar, liar pants on fire: A new benchmark dataset for fake news detection.</li>
+    <li>Zhou, X., &amp; Zafarani, R. (2020). A survey of fake news: Fundamental theories, detection methods, and opportunities.</li>
+  </ol>
+
+  <p><b>Дополнительная литература:</b></p>
+  <ol>
+    <li>Liu, Y. et al. (2019). RoBERTa: A robustly optimized BERT pretraining approach.</li>
+    <li>Devlin, J. et al. (2019). BERT: Pre-training of deep bidirectional transformers for language understanding.</li>
+    <li>Villela, D. et al. (2023). Fake news detection: a systematic literature review of machine learning algorithms and datasets.</li>
+    <li>Moslehi, P. et al. (2024). Fake news detection on social media using a natural language inference approach.</li>
+    <li>Soltaninejad, S. et al. (2024). Comparative analysis of transformer-based models and GNNs for fake news detection.</li>
+    <li>Ma, X. et al. (2024). On fake news detection with LLM enhanced semantics mining.</li>
+  </ol>
+
+  <h2>Политика курса</h2>
+  <p>
+    Обучающиеся должны регулярно посещать занятия, участвовать в обсуждении статей, выполнять
+    практические задания и своевременно сдавать самостоятельную работу. Важной частью курса
+    является не только реализация моделей, но и аргументированное обсуждение ограничений данных,
+    корректности выводов и воспроизводимости результатов. При пропуске занятий по уважительной
+    причине обучающийся может отработать материал в согласованные сроки. При выполнении всех
+    заданий необходимо соблюдать академическую честность и корректно оформлять используемые
+    источники.
+  </p>
+</body>
+</html>

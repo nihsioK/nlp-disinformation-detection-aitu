@@ -144,6 +144,10 @@ ENV/
 env.bak/
 venv.bak/
 
+# Generated training artifacts
+data/
+models/
+
 # Spyder project settings
 .spyderproject
 .spyproject
@@ -209,3 +213,8 @@ __marimo__/
 data/
 .DS_Store
 *.lock
+
+AGENTS.md
+PROJECT_PLAN.md
+*.pdf
+/reports

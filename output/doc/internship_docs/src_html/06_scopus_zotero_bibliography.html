@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Задание 6 - Scopus, Zotero и библиография</title>
+  <style>
+    body {
+      font-family: "Times New Roman", Times, serif;
+      font-size: 14pt;
+      line-height: 1.35;
+      margin: 36pt;
+      color: #000;
+    }
+    h1, h2 {
+      text-align: center;
+      margin: 0 0 12pt 0;
+    }
+    h1 { font-size: 18pt; }
+    h2 { font-size: 15pt; margin-top: 18pt; }
+    p { margin: 0 0 10pt 0; }
+    ul, ol { margin: 0 0 10pt 22pt; }
+    li { margin-bottom: 6pt; }
+    .mono { font-family: "Courier New", monospace; font-size: 12pt; }
+  </style>
+</head>
+<body>
+  <h1>Задание 6</h1>
+  <h1>Scopus query, Zotero и автоматизация библиографии</h1>
+
+  <h2>1. Scopus query</h2>
+  <p class="mono">
+    TITLE-ABS-KEY(("disinformation detection" OR "fake news detection" OR misinformation OR
+    disinformation) AND ("social media" OR "social network*" OR "political statement*" OR
+    "online news") AND ("natural language processing" OR NLP OR transformer OR BERT OR RoBERTa
+    OR "machine learning"))
+  </p>
+
+  <h2>2. Библиографический менеджер Zotero</h2>
+  <p>
+    Для организации источников использован менеджер Zotero. В библиотеке были созданы отдельные
+    подборки по темам: классические методы машинного обучения, transformer-based models,
+    context-aware approaches, диссертации и обзорные статьи. Такой подход позволяет быстро
+    группировать источники по смыслу, экспортировать их в разные стили цитирования и поддерживать
+    аккуратную структуру литературы по теме диссертации.
+  </p>
+
+  <h2>3. Автоматизация оформления</h2>
+  <p><b>Пример автоматического списка citations:</b></p>
+  <p>
+    <b>APA 7:</b> (Salve, 2025; Su, 2022; Zhang, 2024; Gu et al., 2024; Hu et al., 2025; Ma et al.,
+    2024; Moslehi et al., 2024; Raza et al., 2025; Soltaninejad et al., 2024; Villela et al., 2023)
+  </p>
+  <p>
+    <b>IEEE:</b> [1], [2], [3], [4], [5], [6], [7], [8], [9], [10]
+  </p>
+
+  <h2>4. Автоматический список литературы (APA 7)</h2>
+  <ol>
+    <li>Salve, R. R. (2025). <i>Fake News Detection: Leveraging Natural Language Processing and
+      Machine Learning for Reliable Information Verification</i> (Master's thesis). Rochester
+      Institute of Technology. https://repository.rit.edu/theses/12175/</li>
+    <li>Su, T. (2022). <i>Automatic fake news detection on Twitter</i> (Doctoral dissertation).
+      University of Glasgow. https://theses.gla.ac.uk/83114/</li>
+    <li>Zhang, Y. (2024). <i>Deep learning for fake news detection on social networks</i> (Doctoral
+      dissertation). Macquarie University. https://doi.org/10.25949/27885285.v1</li>
+    <li>Gu, Y., Castro, I., &amp; Tyson, G. (2024). Detecting multimodal fake news with gated
+      variational autoencoder. <i>Proceedings of the 16th ACM Web Science Conference</i>.
+      https://doi.org/10.1145/3614419.3643992</li>
+    <li>Hu, J., Zhang, J., &amp; Li, Z. (2025). Tracing truth: dynamic temporal networks for
+      multi-modal fake news detection. <i>PeerJ Computer Science, 11</i>, e2998.
+      https://doi.org/10.7717/peerj-cs.2998</li>
+    <li>Ma, X., Zhang, Y., Ding, K., Yang, J., Wu, J., &amp; Fan, H. (2024). On fake news detection
+      with LLM enhanced semantics mining. <i>Proceedings of the 2024 Conference on Empirical Methods
+      in Natural Language Processing</i>. https://aclanthology.org/2024.emnlp-main.31/</li>
+    <li>Moslehi, P., et al. (2024). Fake news detection on social media using a natural language
+      inference approach. <i>Social Network Analysis and Mining, 14</i>(1).
+      https://doi.org/10.21203/rs.3.rs-107893/v1</li>
+    <li>Raza, N., et al. (2025). Enhancing fake news detection with transformer-based deep learning:
+      A multidisciplinary approach. <i>PLOS ONE, 20</i>(9), e0330954.
+      https://doi.org/10.1371/journal.pone.0330954</li>
+    <li>Soltaninejad, S., et al. (2024). Comparative analysis of transformer-based models and GNNs
+      for fake news detection. <i>Electronics, 13</i>(23), 4784.
+      https://doi.org/10.3390/electronics13234784</li>
+    <li>Villela, D., et al. (2023). Fake news detection: a systematic literature review of machine
+      learning algorithms and datasets. <i>Journal on Interactive Systems, 14</i>(1).
+      https://doi.org/10.5753/jis.2023.3020</li>
+  </ol>
+
+  <h2>5. Автоматический список литературы (IEEE)</h2>
+  <ol>
+    <li>R. R. Salve, <i>Fake News Detection: Leveraging Natural Language Processing and Machine
+      Learning for Reliable Information Verification</i>, Master's thesis, Rochester Institute of
+      Technology, 2025.</li>
+    <li>T. Su, <i>Automatic fake news detection on Twitter</i>, Ph.D. dissertation, University of
+      Glasgow, 2022.</li>
+    <li>Y. Zhang, <i>Deep learning for fake news detection on social networks</i>, Ph.D.
+      dissertation, Macquarie University, 2024, doi: 10.25949/27885285.v1.</li>
+    <li>Y. Gu, I. Castro, and G. Tyson, “Detecting multimodal fake news with gated variational
+      autoencoder,” in <i>Proc. 16th ACM Web Science Conf.</i>, 2024, doi:
+      10.1145/3614419.3643992.</li>
+    <li>J. Hu, J. Zhang, and Z. Li, “Tracing truth: dynamic temporal networks for multi-modal fake
+      news detection,” <i>PeerJ Computer Science</i>, vol. 11, p. e2998, 2025, doi:
+      10.7717/peerj-cs.2998.</li>
+    <li>X. Ma, Y. Zhang, K. Ding, J. Yang, J. Wu, and H. Fan, “On fake news detection with LLM
+      enhanced semantics mining,” in <i>Proc. EMNLP</i>, 2024.</li>
+    <li>P. Moslehi et al., “Fake news detection on social media using a natural language inference
+      approach,” <i>Social Network Analysis and Mining</i>, vol. 14, no. 1, 2024.</li>
+    <li>N. Raza et al., “Enhancing fake news detection with transformer-based deep learning: a
+      multidisciplinary approach,” <i>PLOS ONE</i>, vol. 20, no. 9, 2025, doi:
+      10.1371/journal.pone.0330954.</li>
+    <li>S. Soltaninejad et al., “Comparative analysis of transformer-based models and GNNs for fake
+      news detection,” <i>Electronics</i>, vol. 13, no. 23, 2024, doi:
+      10.3390/electronics13234784.</li>
+    <li>D. Villela et al., “Fake news detection: a systematic literature review of machine learning
+      algorithms and datasets,” <i>Journal on Interactive Systems</i>, vol. 14, no. 1, 2023, doi:
+      10.5753/jis.2023.3020.</li>
+  </ol>
+
+  <h2>6. Два наиболее подходящих журнала</h2>
+  <ol>
+    <li><b>Information</b></li>
+    <li><b>Social Network Analysis and Mining</b></li>
+  </ol>
+
+  <p>
+    На данном этапе именно эти журналы выглядят наиболее близкими к тематике исследования, потому
+    что они сочетают интерес к NLP, machine learning и анализу информационных процессов в цифровой
+    среде.
+  </p>
+</body>
+</html>

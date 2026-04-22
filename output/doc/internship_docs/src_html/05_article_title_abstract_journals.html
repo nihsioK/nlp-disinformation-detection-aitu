@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Задание 5 - статья и журналы</title>
+  <style>
+    body {
+      font-family: "Times New Roman", Times, serif;
+      font-size: 14pt;
+      line-height: 1.35;
+      margin: 36pt;
+      color: #000;
+    }
+    h1, h2 {
+      text-align: center;
+      margin: 0 0 12pt 0;
+    }
+    h1 { font-size: 18pt; }
+    h2 { font-size: 15pt; margin-top: 18pt; }
+    p { margin: 0 0 10pt 0; }
+    ul { margin: 0 0 10pt 20pt; }
+    li { margin-bottom: 6pt; }
+  </style>
+</head>
+<body>
+  <h1>Задание 5</h1>
+  <h1>Название будущей статьи, аннотация и выбор журналов</h1>
+
+  <h2>1. Название будущей статьи на русском и английском языках</h2>
+  <p><b>На русском языке:</b><br>
+    Гибридный подход к выявлению дезинформации в политических высказываниях: объединение текстовых
+    признаков и метаданных спикера
+  </p>
+  <p><b>In English:</b><br>
+    A Hybrid Approach to Disinformation Detection in Political Statements: Combining Textual Features
+    and Speaker Metadata
+  </p>
+
+  <h2>2. Черновик аннотации</h2>
+  <p>
+    The spread of disinformation in social networks and digital political communication makes
+    automatic credibility assessment an important research problem. However, many existing approaches
+    still rely mainly on textual signals and are less effective when the task requires fine-grained
+    truthfulness classification rather than simple binary fake news detection. This study investigates
+    NLP methods for detecting disinformation in political statements using the LIAR dataset, which
+    provides six truthfulness classes together with speaker-related metadata and historical
+    credibility information. The first stage of the work includes a reproducible preprocessing and
+    evaluation pipeline, TF-IDF based baseline models, and a RoBERTa-based text classification
+    experiment. The best baseline result was achieved by SVM with macro-F1 of 0.2533, while RoBERTa
+    improved the score to 0.2758 on the validation set. Although the transformer model showed a
+    positive effect, the improvement remained limited, which indicates that text-only modeling is not
+    sufficient for this task. The next stage of the research is therefore focused on a hybrid
+    content + context architecture that combines statement semantics with speaker metadata and
+    credibility history. The expected contribution of the study is a more effective and better
+    motivated framework for multi-class disinformation detection in political text.
+  </p>
+
+  <h2>3. Два журнала, подходящих по тематике</h2>
+  <ul>
+    <li>
+      <b>Information</b><br>
+      Журнал подходит по тематике машинного обучения, NLP, текстовой аналитики и задач
+      classification. Он хорошо соотносится с направлением работы, где акцент делается на
+      disinformation detection, transformer-based modeling и сравнительный анализ методов.
+    </li>
+    <li>
+      <b>Social Network Analysis and Mining</b><br>
+      Этот журнал особенно хорошо подходит для исследования, потому что тема диссертации напрямую
+      связана с дезинформацией в социальных сетях. Он позволяет подать работу не только как задачу
+      NLP, но и как исследование, связанное с social media context, credibility signals и
+      computational analysis of online information.
+    </li>
+  </ul>
+
+  <h2>4. Краткий комментарий</h2>
+  <p>
+    На данном этапе эти журналы рассматриваются как наиболее близкие по тематике и формату
+    исследования. Окончательный выбор может быть уточнен после завершения hybrid-модели и
+    получения итоговых экспериментальных результатов.
+  </p>
+</body>
+</html>
