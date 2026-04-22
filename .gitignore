@@ -214,7 +214,5 @@ data/
 .DS_Store
 *.lock
 
-AGENTS.md
-PROJECT_PLAN.md
 *.pdf
 /reports
