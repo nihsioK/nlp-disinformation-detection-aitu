@@ -23,16 +23,19 @@ def test_compute_metrics_returns_expected_keys() -> None:
 def test_tfidf_baseline_fit_predict_and_save(tmp_path: Path) -> None:
     """A TF-IDF baseline should train, predict, and persist successfully."""
 
+    # The production baseline config uses min_df=3, so each term in the toy
+    # corpus has to appear at least 3 times or TfidfVectorizer will prune
+    # everything. We duplicate a compact vocabulary accordingly.
     X_train = [
-        "true policy success",
-        "false claim rumor",
-        "budget reform successful",
-        "hoax conspiracy false",
-        "verified statement true",
-        "fake misleading rumor",
+        "true policy reform success claim rumor",
+        "false hoax conspiracy claim rumor fake",
+        "true reform policy success verified statement",
+        "false claim hoax fake misleading rumor",
+        "true verified policy reform claim statement",
+        "false fake hoax conspiracy misleading rumor",
     ]
     y_train = [5, 1, 4, 0, 5, 1]
-    X_valid = ["true reform", "false rumor"]
+    X_valid = ["true policy reform", "false claim rumor"]
 
     model = TFIDFBaseline("naive_bayes")
     model.fit(X_train, y_train)
