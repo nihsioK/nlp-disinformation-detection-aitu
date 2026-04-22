@@ -42,11 +42,16 @@ CELLS: list[dict] = [
 
 This notebook runs the full training pipeline (baseline → transformer → hybrid → hybrid-textonly)
 for the thesis project `nihsioK/nlp-disinformation-detection-aitu` on a Kaggle GPU instance
-(P100 or T4 × 2). Total expected runtime on P100: **~60–90 min** for all four models.
+(T4 × 2 recommended). Total expected runtime: **~60–90 min** for all four models.
 
 **Before running:**
 
-1. In Kaggle, create a new Notebook → Settings → Accelerator → `GPU P100` (or `GPU T4 x2`).
+1. In Kaggle, create a new Notebook → Settings → Accelerator → **`GPU T4 x2`** (recommended).
+   **Do NOT pick `GPU P100`** — Kaggle's current PyTorch build does not ship CUDA kernels for
+   P100's compute capability (sm_60), and transformer training will crash with
+   `cudaErrorNoKernelImageForDevice`. T4 (sm_75) works out of the box. If you are forced onto
+   P100, run the optional **Cell 2b** below to reinstall a compatible PyTorch build (adds
+   ~3–5 minutes).
 2. Settings → Internet → **On** (needed to clone GitHub + download `roberta-base`).
 3. Add a Kaggle Secret named `GH_PAT` (Add-ons → Secrets → Add Secret) containing a GitHub
    Personal Access Token with `repo` scope — needed to push the JSON metrics back to the
@@ -95,16 +100,65 @@ REPO_DIR = f"{WORKDIR}/{REPO_NAME}"
 """
     ),
     md(
-        """## 1. GPU check
+        """## 1. GPU check + compatibility guard
 
-Sanity-check that Kaggle actually gave us a GPU. If this shows `cpu`, stop and change the
-accelerator setting before continuing.
+Sanity-check that Kaggle actually gave us a GPU, and warn early if the GPU's compute
+capability is not covered by the shipped PyTorch build. On Kaggle today:
+
+- **T4** (`sm_75`) — works out of the box.
+- **P100** (`sm_60`) — **not supported** by the default `torch` wheel. Run Cell 2b below
+  to reinstall a compatible build, or (better) switch the accelerator to T4 × 2.
 """
     ),
     code(
         """import subprocess
 
 print(subprocess.run(["nvidia-smi"], capture_output=True, text=True).stdout or "No NVIDIA GPU detected.")
+
+try:
+    import torch
+    if torch.cuda.is_available():
+        name = torch.cuda.get_device_name(0)
+        cap = torch.cuda.get_device_capability(0)
+        supported = torch.cuda.get_arch_list()
+        sm = f"sm_{cap[0]}{cap[1]}"
+        print(f"\\nDevice: {name}  capability={sm}")
+        print(f"PyTorch was built for: {supported}")
+        if sm not in supported:
+            print(
+                f"\\n>>> WARNING: {sm} is NOT in {supported}. "
+                "Transformer training will crash with 'no kernel image is available'.\\n"
+                ">>> Fix: either switch Accelerator to 'GPU T4 x2' in the right-hand\\n"
+                ">>> sidebar and restart the kernel, or run Cell 2b below to reinstall\\n"
+                ">>> a PyTorch build that supports this device."
+            )
+        else:
+            print(f"\\nOK — {sm} is supported by this PyTorch build.")
+    else:
+        print("\\nNo CUDA device visible to PyTorch. Enable a GPU accelerator.")
+except Exception as exc:
+    print(f"Could not query PyTorch CUDA state: {exc}")
+"""
+    ),
+    md(
+        """## 2b. (Optional) Reinstall PyTorch for P100 / older GPUs
+
+**Skip this cell if the check above printed "OK".** Only run it if you are stuck on a P100
+(or any GPU whose capability is not in `torch.cuda.get_arch_list()`).
+
+This pins `torch` / `torchvision` / `torchaudio` to the official `cu121` wheels, which
+include kernels for `sm_60` through `sm_90`. After it finishes, **restart the kernel**
+(Run → Restart kernel), then skip straight to Cell 3.
+"""
+    ),
+    code(
+        """# Uncomment the next three lines only if Cell 1 printed a sm_XX mismatch warning.
+# import subprocess, sys
+# subprocess.run([sys.executable, "-m", "pip", "install", "--quiet",
+#                 "torch==2.4.1", "torchvision==0.19.1", "torchaudio==2.4.1",
+#                 "--index-url", "https://download.pytorch.org/whl/cu121"], check=True)
+# print("Done. Now click Run -> Restart kernel, then run Cell 3 onward.")
+print("Cell 2b is opt-in — read the markdown above before enabling.")
 """
     ),
     md(
