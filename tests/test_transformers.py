@@ -11,12 +11,17 @@ from src.disinfo_detection.models_transformers import LIARDataset, RoBERTaClassi
 
 
 class DummyTokenizer:
-    """Simple tokenizer for deterministic transformer tests."""
+    """Simple tokenizer for deterministic transformer tests.
 
-    def __call__(self, text: str, padding: str, truncation: bool, max_length: int, return_tensors: str):
-        del text, padding, truncation, return_tensors
-        input_ids = torch.arange(max_length, dtype=torch.long).unsqueeze(0)
-        attention_mask = torch.ones((1, max_length), dtype=torch.long)
+    Now that `LIARDataset` pre-tokenizes the full batch at construction time
+    (rather than per-item), this dummy needs to honor the batch dimension too.
+    """
+
+    def __call__(self, text, padding: str, truncation: bool, max_length: int, return_tensors: str):
+        del padding, truncation, return_tensors
+        batch_size = len(text) if isinstance(text, list) else 1
+        input_ids = torch.arange(max_length, dtype=torch.long).unsqueeze(0).repeat(batch_size, 1)
+        attention_mask = torch.ones((batch_size, max_length), dtype=torch.long)
         return {"input_ids": input_ids, "attention_mask": attention_mask}
 
 

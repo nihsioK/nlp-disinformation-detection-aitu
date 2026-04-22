@@ -1,4 +1,4 @@
-.PHONY: install download smoke preprocess baseline transformer train-all test clean
+.PHONY: install download smoke preprocess baseline transformer hybrid hybrid-textonly train-all test clean
 
 VENV ?= .venv
 PYTHON_BIN ?= python3.12
@@ -27,7 +27,16 @@ baseline: $(PYTHON)
 transformer: $(PYTHON)
 	$(PYTHON) scripts/train_transformer.py
 
-train-all: download preprocess baseline transformer
+hybrid: $(PYTHON)
+	$(PYTHON) scripts/train_hybrid.py
+
+# Text-only ablation that reuses the hybrid code path (for RQ2).
+# Flips use_metadata off via a one-line sed into a temp config.
+hybrid-textonly: $(PYTHON)
+	sed 's/use_metadata: true/use_metadata: false/' config/hybrid.yaml > config/hybrid_textonly.yaml
+	HYBRID_CONFIG=config/hybrid_textonly.yaml $(PYTHON) scripts/train_hybrid.py
+
+train-all: download preprocess baseline transformer hybrid
 
 test: $(PYTHON)
 	$(PYTHON) -m pytest tests/ -v

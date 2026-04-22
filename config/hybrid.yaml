@@ -1,0 +1,61 @@
+# Hybrid (text + metadata) fine-tuning configuration.
+#
+# Starts from the tuned transformer config (config/transformer.yaml) and adds
+# a metadata branch. Key design choices:
+# - Same encoder lr as text-only baseline (1e-5) to keep the comparison honest.
+# - Separate (higher) lr for the metadata + fusion head since those params are
+#   trained from scratch and can tolerate a larger step.
+# - `use_metadata: true` trains the full hybrid; flip to false to reproduce
+#   the text-only RoBERTa ablation through the exact same code path.
+
+model:
+  name: roberta-base
+  max_length: 64
+  num_labels: 6
+  hidden_dropout_prob: 0.2
+  attention_probs_dropout_prob: 0.2
+  use_metadata: true
+  metadata_output_dim: 64
+  metadata_embedding_dim: 16
+  fusion_hidden_dim: 128
+  fusion_dropout: 0.2
+
+metadata:
+  categorical_fields:
+    - speaker
+    - party
+    - job
+    - state
+    - subject
+    - context
+  num_buckets: 256
+
+training:
+  batch_size: 16
+  gradient_accumulation_steps: 2
+  encoder_learning_rate: 1.0e-5
+  head_learning_rate: 5.0e-4
+  epochs: 6
+  warmup_ratio: 0.06
+  weight_decay: 0.01
+  gradient_clip: 1.0
+  label_smoothing: 0.05
+  log_every_steps: 100
+  seed: 42
+  early_stopping_patience: 2
+
+runtime:
+  device: auto
+  device_priority:
+    - cuda
+    - mps
+    - cpu
+  num_workers: 0
+  pin_memory: false
+  max_train_samples:
+  max_valid_samples:
+
+paths:
+  output_dir: models/hybrid_liar/
+  logs_dir: reports/hybrid_logs/
+  best_checkpoint: models/hybrid_liar/best_model.pt
