@@ -1,96 +1,86 @@
 # nlp-disinformation-detection-aitu
 
-Hybrid NLP framework for detecting disinformation in political statements from the LIAR dataset.
-The project combines a transformer text branch based on `roberta-base` with a metadata branch that
-encodes speaker credibility history and categorical context features.
+Hybrid NLP framework for detecting disinformation in political statements from
+the LIAR dataset. The project combines a fine-tuned `roberta-base` text encoder
+with a metadata branch that encodes speaker credibility history and hashed
+categorical context features.
 
-The repository is now organized for local-first development on macOS with Apple Silicon. Cloud
-notebooks such as Colab or Kaggle are optional fallback environments, not the primary execution
-path.
+This repository is the code base for Daniyar Koishin's master's thesis at
+Astana IT University (program 7M06105, 2025–2027). The planned outputs are an
+IEEE SIST 2026 conference paper and a Scopus journal article, followed by the
+thesis defense in June 2027.
+
+## What is in the repo
+
+| Area | Location |
+|---|---|
+| Classical baselines (TF-IDF + NB / SVM / RF) | `scripts/train_baseline.py`, `src/disinfo_detection/models_baseline.py` |
+| Text-only RoBERTa | `scripts/train_transformer.py`, `src/disinfo_detection/models_transformers.py` |
+| **Hybrid text + metadata model (thesis novelty)** | `scripts/train_hybrid.py`, `src/disinfo_detection/models_hybrid.py`, `src/disinfo_detection/metadata_features.py`, `src/disinfo_detection/datasets_hybrid.py` |
+| Preprocessing | `scripts/preprocess.py`, `src/disinfo_detection/preprocessing.py` |
+| Evaluation utilities | `src/disinfo_detection/evaluation.py` |
+| EDA | `notebooks/01_eda_liar.ipynb` |
+| Configs | `config/{dataset,baseline,transformer,hybrid}.yaml` |
+| Tests | `tests/` (pytest) |
+| Design notes | `docs/TRAINING_IMPROVEMENTS.md`, `docs/HYBRID_MODEL.md` |
+| Agent/developer rules | `AGENTS.md` |
 
 ## Prerequisites
 
-- Python `3.12` as specified in `.python-version`
-- macOS on Apple Silicon is the primary target environment
-- A local virtual environment in `.venv`
-- For transformer training, PyTorch should use `mps` when available; `cpu` remains the fallback
+- Python **3.12** (pinned in `.python-version`)
+- macOS on Apple Silicon is the primary development target; Linux with CUDA
+  also works. Device selection is automatic: `cuda` → `mps` → `cpu`.
+- A local virtual environment in `.venv/`.
 
 ## Installation
-
-Create and populate a local virtual environment:
 
 ```bash
 python3.12 -m venv .venv
 source .venv/bin/activate
-python -m pip install --upgrade pip
+pip install --upgrade pip
 pip install -e ".[ml,viz,dev]"
 ```
 
-If you prefer `make`, the same setup is available through:
+Or, equivalently:
 
 ```bash
 make install
 ```
 
-## Quick Start
-
-The repository is still partially scaffolded, so only the data acquisition and loader path are
-fully implemented today. The local workflow is:
+## End-to-end pipeline
 
 ```bash
-make install
-make download
-make smoke
+make download         # LIAR train/valid/test.tsv into data/ (≈ 1 MB)
+make preprocess       # data/processed/{train,valid,test}.pkl
+make baseline         # TF-IDF + NB / SVM / RF
+make transformer      # text-only RoBERTa fine-tuning
+make hybrid           # text + metadata hybrid (thesis novelty)
+make hybrid-textonly  # RQ2 ablation: hybrid code path with use_metadata=false
+make test             # pytest, currently 16/16 green
 ```
 
-As the remaining modules are implemented, the intended local end-to-end pipeline is:
+All trained models land in `models/` (gitignored). Per-epoch metrics land in
+`reports/transformer_logs/` and `reports/hybrid_logs/`. Final TEST metrics are
+written as JSON next to the logs.
 
-```bash
-make download
-make preprocess
-make baseline
-make transformer
-make test
-```
+## Reported metric
 
-## Local Execution Notes
+Every number in the thesis and the paper is computed on the **TEST split
+(1 283 examples)**, not the validation split. Primary metric is macro-F1;
+secondary metrics are accuracy, per-class F1, and the confusion matrix.
 
-- Prefer running everything from the project root with the local `.venv`
-- On Apple Silicon, transformer code should select devices in this order: `cuda`, then `mps`,
-  then `cpu`
-- Start conservatively with batch sizes that fit local memory; increase only after verifying
-  stable runs
-- Colab/Kaggle should only be used if local runtime or memory proves insufficient for a specific
-  experiment
+## Project status
 
-## Project Structure
+- ✅ Data loading, preprocessing, classical baselines, text-only RoBERTa,
+  hybrid text + metadata model, 16 unit tests.
+- ⏳ Full local training run on Apple Silicon to populate final numbers in the
+  thesis report (MSRW 2 §5 currently has `[to be filled]` placeholders).
+- ⏳ IEEE SIST 2026 paper draft alignment with final numbers.
 
-```text
-nlp-disinformation-detection-aitu/
-├── config/                    # YAML configs for data, baseline, and transformer runs
-├── notebooks/                 # EDA and experiment notebooks
-├── reports/                   # Figures, logs, and tabular outputs
-├── scripts/                   # Runnable CLI entry points
-├── src/disinfo_detection/     # Core package code
-├── tests/                     # Pytest-based validation
-├── AGENTS.md                  # Agent rules and project decisions
-└── PROJECT_PLAN.md            # Week-by-week implementation roadmap
-```
+See `AGENTS.md` for the coding conventions, dataset conventions, key design
+decisions, and progress log.
 
-## Current Status
+## License and citation
 
-- Implemented: `scripts/download_data.py`, `config/dataset.yaml`,
-  `src/disinfo_detection/data_loader.py`
-- Prepared for local-first usage: `README.md`, `Makefile`, local config scaffolding, and
-  Apple Silicon workflow guidance
-- Not yet implemented: preprocessing, baseline training, transformer training, hybrid model,
-  evaluation utilities, and automated tests
-
-## Results
-
-Final model results are not available yet because the training and evaluation stages are still in
-progress. This section will be updated once `reports/final_results.csv` exists.
-
-## Citation
-
-Citation details will be added after the thesis manuscript and final results are complete.
+Citation and license details will be added once the thesis manuscript and
+final results are complete.
