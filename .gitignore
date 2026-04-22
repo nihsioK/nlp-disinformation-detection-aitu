@@ -215,4 +215,15 @@ data/
 *.lock
 
 *.pdf
-/reports
+
+# reports/ contains large binary artifacts (figures PNGs, CSV training histories,
+# .pt checkpoints) that should stay out of git. We allow ONLY the JSON metric
+# summaries so final test numbers can be committed alongside the paper.
+/reports/*
+!/reports/__init__.py
+!/reports/paper/
+!/reports/*_logs/
+/reports/*_logs/*
+!/reports/*_logs/*.json
+!/reports/results_summary.json
+!/reports/baseline_detailed_metrics.json
