@@ -54,7 +54,10 @@ and never prints the value.
 2. In the top bar: **File** → **Import notebook** and upload
    `notebooks/kaggle_training.ipynb` from this repo.
 3. Open the right sidebar and configure the session:
-   - **Accelerator**: `GPU P100` (or `GPU T4 x2`, slower).
+   - **Accelerator**: **`GPU T4 x2`** (recommended). **Do NOT pick `GPU P100`** — Kaggle's
+     current PyTorch build does not ship CUDA kernels for P100's compute capability (`sm_60`),
+     so transformer training crashes with `cudaErrorNoKernelImageForDevice`. T4 (`sm_75`)
+     works out of the box. If Kaggle only gives you a P100, see §7 "P100 GPU".
    - **Persistence**: `No persistence` is fine; we re-clone each run.
    - **Environment**: `Always use latest environment`.
    - **Internet**: **ON** (required — we clone GitHub and `pip install`).
@@ -152,6 +155,16 @@ Checkpoints are written to `models/` inside the Kaggle session only.
 ---
 
 ## 7. Troubleshooting
+
+**Transformer crashes with `CUDA error: no kernel image is available for execution on the device` / `cudaErrorNoKernelImageForDevice` (P100 GPU)**
+You are on a P100 (`sm_60`) but Kaggle's default `torch` wheel only contains kernels for
+`sm_70+`. Two fixes:
+
+- **Preferred**: in the right sidebar, change **Accelerator** to `GPU T4 x2` and restart
+  the kernel. T4 has `sm_75` and just works.
+- **Fallback** (if you really need P100): enable Cell 2b in the notebook to reinstall
+  `torch==2.4.1 torchvision==0.19.1 torchaudio==2.4.1` from the official `cu121` index,
+  which includes `sm_60` kernels. Then **Run → Restart kernel** and continue from Cell 3.
 
 **`RuntimeError: Could not load Kaggle Secret 'GH_PAT'`**
 You either didn't add the secret or didn't attach it to the notebook.
