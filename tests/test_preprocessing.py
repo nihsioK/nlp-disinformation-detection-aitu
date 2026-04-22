@@ -13,22 +13,39 @@ from src.disinfo_detection.preprocessing import (
 
 
 def test_clean_text_for_transformer_removes_urls_and_normalizes_whitespace() -> None:
-    """Transformer cleaning should preserve natural text while removing URLs."""
+    """Transformer cleaning should preserve case and punctuation, but strip URLs/HTML."""
 
     text = " Visit HTTPS://example.com   NOW for <b>Facts</b> "
     cleaned = clean_text_for_transformer(text)
     assert "http" not in cleaned
-    assert cleaned == "visit now for facts"
+    # Casing and punctuation are preserved for the RoBERTa BPE tokenizer.
+    assert cleaned == "Visit NOW for Facts"
 
 
-def test_clean_text_for_tfidf_returns_normalized_tokens() -> None:
-    """TF-IDF cleaning should remove URLs, stopwords, and inflective noise."""
+def test_clean_text_for_tfidf_removes_urls_and_stopwords_without_stemming() -> None:
+    """TF-IDF cleaning should lowercase, drop URLs and stopwords, keep surface forms."""
 
     text = "The cats are running to https://example.com faster than dogs."
     cleaned = clean_text_for_tfidf(text)
+    tokens = cleaned.split()
     assert "http" not in cleaned
-    assert "the" not in cleaned.split()
-    assert "cat" in cleaned.split()
+    assert "the" not in tokens
+    # We deliberately do NOT stem, so surface forms survive.
+    assert "cats" in tokens
+    assert "running" in tokens
+    assert "dogs" in tokens
+
+
+def test_clean_text_for_tfidf_preserves_numbers_and_currency() -> None:
+    """LIAR statements contain many numerical claims; TF-IDF path must keep them."""
+
+    text = "Taxes rose by $600 billion, a 40% increase in 2008."
+    cleaned = clean_text_for_tfidf(text)
+    tokens = cleaned.split()
+    # Numbers and currency markers survive.
+    assert "2008" in tokens
+    assert any(tok.startswith("$") for tok in tokens)
+    assert any(tok.endswith("%") for tok in tokens)
 
 
 def test_build_credibility_vector_is_normalized() -> None:
