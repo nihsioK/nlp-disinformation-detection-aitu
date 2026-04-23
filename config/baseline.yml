@@ -9,6 +9,10 @@
 #   C=1.0 was slightly overfitting.
 # - RandomForest: max_depth=None (unbounded) was better than max_depth=20 on LIAR.
 #   min_samples_leaf=1 likewise.
+# - RandomForest: n_estimators was 400 with max_depth=None and the pickled
+#   model was ~500 MB, which blew the repo artifact budget with no measurable
+#   macro-F1 benefit. max_depth=40 caps per-tree memory, n_estimators=200
+#   roughly halves the forest without a statistically significant drop on LIAR.
 
 tfidf:
   max_features: 60000
@@ -27,8 +31,8 @@ naive_bayes:
   alpha: 0.3
 
 random_forest:
-  n_estimators: 400
-  max_depth: null
+  n_estimators: 200
+  max_depth: 40
   min_samples_leaf: 1
   class_weight: balanced_subsample
   n_jobs: -1

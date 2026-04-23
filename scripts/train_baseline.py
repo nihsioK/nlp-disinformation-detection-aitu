@@ -144,21 +144,25 @@ def main() -> None:
         ["model", "vocab_size", "valid_accuracy", "valid_macro_f1", "test_accuracy", "test_macro_f1"]
     ].to_csv(output_csv, index=False)
 
-    # Detailed JSON with per-class F1 for thesis tables.
+    # Detailed JSON with per-class F1/precision/recall and confusion matrix
+    # for thesis tables. classification_report is not compact enough for the
+    # report, so we serialize only the fields the thesis tables consume.
     with (reports_dir / "baseline_detailed_metrics.json").open("w", encoding="utf-8") as fp:
-        # classification_report is not JSON-serializable in full, keep only key fields.
+        def _slim(split_metrics: dict) -> dict:
+            return {
+                "accuracy": split_metrics["accuracy"],
+                "macro_f1": split_metrics["macro_f1"],
+                "per_class_f1": split_metrics["per_class_f1"],
+                "per_class_precision": split_metrics["per_class_precision"],
+                "per_class_recall": split_metrics["per_class_recall"],
+                "confusion_matrix": split_metrics["confusion_matrix"],
+                "confusion_matrix_labels": split_metrics["confusion_matrix_labels"],
+            }
+
         compact = {
             key: {
-                "valid": {
-                    "accuracy": value["valid"]["accuracy"],
-                    "macro_f1": value["valid"]["macro_f1"],
-                    "per_class_f1": value["valid"]["per_class_f1"],
-                },
-                "test": {
-                    "accuracy": value["test"]["accuracy"],
-                    "macro_f1": value["test"]["macro_f1"],
-                    "per_class_f1": value["test"]["per_class_f1"],
-                },
+                "valid": _slim(value["valid"]),
+                "test": _slim(value["test"]),
                 "vocab_size": value["vocab_size"],
             }
             for key, value in detailed_results.items()

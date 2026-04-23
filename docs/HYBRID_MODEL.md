@@ -11,8 +11,12 @@ The per-statement text is very short (~17 tokens) and often devoid of
 features distinguishing "half-true" from "mostly-true" without external
 signal. The LIAR dataset, however, ships metadata for every statement —
 speaker, party, job, state, subject, context, and prior-statement history —
-which prior work has shown can lift macro-F1 by 2–6 points when fused
-correctly.
+which prior work has shown can lift macro-F1 by roughly 10–17 points when
+the historical credibility counts are included (Alhindi 2018 reports
+≈0.415; Kirilin & Strube 2019 reports ≈0.443). Pure categorical-context
+fusion without credibility counts typically only adds 2–6 points. See
+"A note on LIAR metadata and information leakage" below for why the
+credibility-count lift is unusually large and how we disclose it.
 
 This module operationalizes that fusion end-to-end with an ablation-ready
 design so the thesis can report fair `text-only` vs. `text + metadata`
@@ -82,6 +86,38 @@ Outputs:
    speakers (~3k unique) and an even longer tail of subject combinations.
    Hashing removes the need to serialize a vocab while keeping collision
    rates low at bucket size 256 per field.
+
+## A note on LIAR metadata and information leakage
+
+LIAR's five credibility-count columns (`barely_true_counts`, `false_counts`,
+`half_true_counts`, `mostly_true_counts`, `pants_on_fire_counts`) are released
+by Wang (2017) as the speaker's **full PolitiFact credit history at collection
+time** — not as counts computed only from the training split. That is a
+property of the dataset, not of our preprocessing: `preprocessing.py` only
+normalizes and re-packages these fields.
+
+This has two consequences worth disclosing in the thesis:
+
+1. For any speaker that appears in both `train` and `test`, the credibility
+   counts available at test time contain signal that, in principle, could
+   include the test statement itself. This is the standard LIAR setup used
+   by every prior hybrid-LIAR result we compare against (Wang 2017; Long
+   2017; Alhindi 2018; Kirilin & Strube 2019), so macro-F1 lifts of 10–16
+   points from adding metadata — as observed here — are consistent with
+   that literature rather than a bug in our pipeline. Kirilin & Strube
+   (2019) report TEST macro-F1 of 44.3% using metadata + attention vs.
+   27.7% for text-only RoBERTa in our own runs; our hybrid sits inside
+   that range.
+2. We do *not* recompute counts on the fly, do *not* use the current
+   statement's label when forming a row's features, and the metadata
+   branch is strictly ablatable (`use_metadata: false`) so that a fair
+   text-vs-hybrid comparison always runs through the same code path. The
+   text-only ablation recovers the same macro-F1 as the standalone
+   transformer baseline (~0.28 on TEST), which is the sanity check that
+   rules out metadata signal leaking through an unintended route.
+
+The thesis results section should state point (1) explicitly so reviewers
+can interpret the absolute numbers correctly.
 
 ## Tests
 

@@ -299,6 +299,11 @@ def main() -> None:
         "test_accuracy": test_metrics["accuracy"],
         "test_macro_f1": test_metrics["macro_f1"],
         "test_per_class_f1": test_metrics["per_class_f1"],
+        "test_per_class_precision": test_metrics["per_class_precision"],
+        "test_per_class_recall": test_metrics["per_class_recall"],
+        "test_confusion_matrix": test_metrics["confusion_matrix"],
+        "test_confusion_matrix_labels": test_metrics["confusion_matrix_labels"],
+        "seed": int(training_cfg["seed"]),
         "run_timestamp": run_timestamp,
         "device": str(device),
     }

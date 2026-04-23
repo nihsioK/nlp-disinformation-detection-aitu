@@ -17,7 +17,9 @@ def compute_metrics(y_true: list[int], y_pred: list[int], label_names: list[str]
         label_names: Ordered human-readable label names.
 
     Returns:
-        Dictionary containing accuracy, macro-F1, per-class F1, and the sklearn report.
+        Dictionary containing accuracy, macro-F1, per-class F1/precision/recall,
+        the raw confusion matrix (list of lists, rows = true, cols = pred), and
+        the sklearn classification report.
     """
 
     labels = list(range(len(label_names)))
@@ -33,10 +35,23 @@ def compute_metrics(y_true: list[int], y_pred: list[int], label_names: list[str]
         label_name: float(report[label_name]["f1-score"])
         for label_name in label_names
     }
+    per_class_precision = {
+        label_name: float(report[label_name]["precision"])
+        for label_name in label_names
+    }
+    per_class_recall = {
+        label_name: float(report[label_name]["recall"])
+        for label_name in label_names
+    }
+    matrix = confusion_matrix(y_true, y_pred, labels=labels).tolist()
     return {
         "accuracy": float(accuracy_score(y_true, y_pred)),
         "macro_f1": float(f1_score(y_true, y_pred, average="macro", zero_division=0)),
         "per_class_f1": per_class_f1,
+        "per_class_precision": per_class_precision,
+        "per_class_recall": per_class_recall,
+        "confusion_matrix": matrix,
+        "confusion_matrix_labels": list(label_names),
         "classification_report": report,
     }
 

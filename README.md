@@ -10,6 +10,47 @@ Astana IT University (program 7M06105, 2025–2027). The planned outputs are an
 IEEE SIST 2026 conference paper and a Scopus journal article, followed by the
 thesis defense in June 2027.
 
+## Research questions
+
+The thesis and the paper are organized around three research questions. The
+codebase is structured so that each RQ maps to a single `make` target.
+
+- **RQ1 — Are classical TF-IDF baselines competitive with transformer
+  text-only models on LIAR six-class?** Answered by comparing
+  `make baseline` (Naive Bayes / SVM / Random Forest) against
+  `make transformer` (text-only RoBERTa-base) on the TEST-split macro-F1.
+- **RQ2 — Does fusing LIAR metadata (speaker credibility counts, hashed
+  categorical context fields) with the RoBERTa encoder improve macro-F1 over
+  a text-only transformer of identical capacity?** Answered by comparing
+  `make hybrid` (text + metadata) against `make hybrid-textonly`, which runs
+  the *same* hybrid code path with `use_metadata: false` so the only
+  difference is the metadata branch.
+- **RQ3 — Which metadata signals carry the lift: the historical credibility
+  counts, or the categorical context fields (speaker / party / job / state /
+  subject / context)?** Addressed by toggling `metadata.categorical_fields`
+  in `config/hybrid.yaml`; see `docs/HYBRID_MODEL.md` for the planned
+  per-field ablations.
+
+## Dataset
+
+All experiments use the **LIAR** dataset (Wang, 2017):
+
+- 12 836 short political statements collected from PolitiFact.
+- Six-class ordinal truthfulness label: `pants-fire < false < barely-true <
+  half-true < mostly-true < true`.
+- Ships with per-speaker metadata: `speaker`, `party`, `job`, `state`,
+  `subject`, `context`, and five historical credibility counts
+  (`barely_true_counts`, `false_counts`, `half_true_counts`,
+  `mostly_true_counts`, `pants_on_fire_counts`).
+- Train / valid / test splits: 10 269 / 1 284 / 1 283 statements. The test
+  split is the canonical reporting split used by Wang (2017) and
+  follow-ups and is the only split quoted in the thesis and the paper
+  (see "Reported metric" below).
+
+See `docs/HYBRID_MODEL.md` for a note on LIAR's credibility-count convention
+and why the observed metadata-driven macro-F1 lift is consistent with prior
+published numbers (Alhindi 2018; Kirilin & Strube 2019).
+
 ## What is in the repo
 
 | Area | Location |
@@ -20,7 +61,7 @@ thesis defense in June 2027.
 | Preprocessing | `scripts/preprocess.py`, `src/disinfo_detection/preprocessing.py` |
 | Evaluation utilities | `src/disinfo_detection/evaluation.py` |
 | EDA | `notebooks/01_eda_liar.ipynb` |
-| Configs | `config/{dataset,baseline,transformer,hybrid}.yaml` |
+| Configs | `config/dataset.yaml`, `config/baseline.yml`, `config/transformer.yaml`, `config/hybrid.yaml` |
 | Tests | `tests/` (pytest) |
 | Design notes | `docs/TRAINING_IMPROVEMENTS.md`, `docs/HYBRID_MODEL.md` |
 | Agent/developer rules | `AGENTS.md` |

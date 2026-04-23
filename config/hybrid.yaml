@@ -35,7 +35,10 @@ training:
   gradient_accumulation_steps: 2
   encoder_learning_rate: 1.0e-5
   head_learning_rate: 5.0e-4
-  epochs: 6
+  # Epochs raised from 6 → 12 after observing val macro-F1 still monotonically
+  # rising at epoch 6 (0.278 → 0.444). Early stopping on val macro-F1 with
+  # patience=2 keeps the wall-clock bounded for seeds that plateau earlier.
+  epochs: 12
   warmup_ratio: 0.06
   weight_decay: 0.01
   gradient_clip: 1.0

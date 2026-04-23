@@ -23,7 +23,9 @@ training:
   batch_size: 16
   gradient_accumulation_steps: 2
   learning_rate: 1.0e-5
-  epochs: 6
+  # Epochs raised from 6 → 10. RoBERTa on LIAR typically peaks by epoch 5-7
+  # but the extra budget + early stopping gives slower-converging seeds room.
+  epochs: 10
   warmup_ratio: 0.06
   weight_decay: 0.01
   gradient_clip: 1.0
