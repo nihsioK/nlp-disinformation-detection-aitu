@@ -2,9 +2,17 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
-from src.disinfo_detection.evaluation import compute_metrics
+import pandas as pd
+
+from src.disinfo_detection.evaluation import (
+    build_env_record,
+    build_prediction_records,
+    compute_metrics,
+    write_jsonl_records,
+)
 from src.disinfo_detection.models_baseline import TFIDFBaseline
 
 
@@ -49,3 +57,78 @@ def test_tfidf_baseline_fit_predict_and_save(tmp_path: Path) -> None:
     assert probabilities.shape[0] == 2
     assert output_path.exists()
     assert loaded.predict(X_valid) == predictions
+
+
+def test_build_env_record_includes_reproducibility_fields() -> None:
+    """Environment fingerprints should contain the fields needed to audit a run."""
+
+    record = build_env_record(
+        seed=42,
+        device="cpu",
+        run_timestamp="2026-04-24T00:00:00+00:00",
+    )
+    expected = {
+        "git_sha",
+        "python_version",
+        "torch_version",
+        "transformers_version",
+        "device",
+        "seed",
+        "run_timestamp",
+    }
+    assert expected <= set(record)
+    assert record["seed"] == 42
+    assert record["device"] == "cpu"
+
+
+def test_prediction_jsonl_helper_writes_one_record_per_row(tmp_path: Path) -> None:
+    """Prediction JSONL artifacts should preserve labels, metadata, and probabilities."""
+
+    frame = pd.DataFrame(
+        [
+            {
+                "id": "test-1",
+                "statement": "Claim one.",
+                "label_id": 0,
+                "speaker": "alice",
+                "party": "independent",
+                "job": "analyst",
+                "state": "TX",
+                "subject": "economy",
+                "context": "speech",
+            },
+            {
+                "id": "test-2",
+                "statement": "Claim two.",
+                "label_id": 1,
+                "speaker": "bob",
+                "party": "democrat",
+                "job": "governor",
+                "state": "CA",
+                "subject": "health",
+                "context": "debate",
+            },
+        ]
+    )
+    records = build_prediction_records(
+        frame=frame,
+        predictions=[0, 0],
+        probabilities=[[0.9, 0.1], [0.6, 0.4]],
+        logits=None,
+        label_names=["pants-fire", "false"],
+        model_name="baseline_naive_bayes",
+        seed=42,
+        split="test",
+    )
+    output_path = tmp_path / "predictions.jsonl"
+    write_jsonl_records(records, output_path)
+
+    lines = output_path.read_text(encoding="utf-8").splitlines()
+    decoded = [json.loads(line) for line in lines]
+    assert len(decoded) == 2
+    assert decoded[0]["model"] == "baseline_naive_bayes"
+    assert decoded[0]["true_label"] == "pants-fire"
+    assert decoded[0]["pred_label"] == "pants-fire"
+    assert decoded[0]["correct"] is True
+    assert decoded[0]["probabilities"] == [0.9, 0.1]
+    assert decoded[0]["logits"] is None

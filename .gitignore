@@ -226,5 +226,14 @@ data/
 /reports/*_logs/*
 !/reports/*_logs/*.json
 !/reports/results_summary.json
+!/reports/multi_seed_summary.json
 !/reports/baseline_detailed_metrics.json
+!/reports/predictions/
+/reports/predictions/*
+!/reports/predictions/*.jsonl
+!/reports/seed_*/
+/reports/seed_*/**/*
+!/reports/seed_*/**/
+!/reports/seed_*/**/*.json
+!/reports/seed_*/**/*.jsonl
 paper/

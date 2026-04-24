@@ -271,3 +271,13 @@ All final metrics in the thesis and paper are reported on the **TEST split (1 28
 - Rewrote `AGENTS.md` (this file) from scratch so future agents get an accurate, compact view of the project.
 - Rewrote `README.md` to reflect the current state.
 - No code changes.
+
+### [2026-04-24] — Pre-Kaggle instrumentation plan/code prepared
+
+- Added the pre-Kaggle requirement that every model writes TEST prediction JSONL
+  artifacts with probabilities/logits.
+- Added environment fingerprints to metrics JSON outputs and updated the Kaggle
+  notebook generator for multi-seed artifact collection.
+- Replaced `PLAN.md` with a thesis roadmap that makes instrumentation the
+  required Phase 0 before expensive Kaggle training.
+- Validated with local unit tests and notebook regeneration before the next Kaggle run.

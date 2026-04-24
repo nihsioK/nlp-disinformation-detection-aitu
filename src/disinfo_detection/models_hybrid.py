@@ -268,12 +268,14 @@ class HybridTrainer:
 
         return total_loss / max(total_batches, 1)
 
-    def evaluate(self, dataloader, device) -> dict:
+    def evaluate(self, dataloader, device, return_outputs: bool = False) -> dict:
         self.model.eval()
         total_loss = 0.0
         total_batches = 0
         predictions: list[int] = []
         labels: list[int] = []
+        logits_rows: list[list[float]] = []
+        probability_rows: list[list[float]] = []
 
         with torch.no_grad():
             for batch in dataloader:
@@ -287,11 +289,20 @@ class HybridTrainer:
                 loss = self._loss_fn(logits, tensors["label"])
                 total_loss += float(loss.item())
                 total_batches += 1
-                predictions.extend(torch.argmax(logits, dim=1).cpu().tolist())
+                batch_predictions = torch.argmax(logits, dim=1)
+                predictions.extend(batch_predictions.cpu().tolist())
                 labels.extend(tensors["label"].cpu().tolist())
+                if return_outputs:
+                    logits_rows.extend(logits.detach().cpu().tolist())
+                    probability_rows.extend(torch.softmax(logits, dim=1).detach().cpu().tolist())
 
         metrics = compute_metrics(labels, predictions, self.label_names)
         metrics["val_loss"] = total_loss / max(total_batches, 1)
+        if return_outputs:
+            metrics["labels"] = labels
+            metrics["predictions"] = predictions
+            metrics["probabilities"] = probability_rows
+            metrics["logits"] = logits_rows
         return metrics
 
     def save(self, path: str) -> None:

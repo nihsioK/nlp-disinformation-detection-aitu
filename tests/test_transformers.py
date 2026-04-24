@@ -80,6 +80,7 @@ def test_roberta_classifier_train_evaluate_and_save(tmp_path: Path) -> None:
 
     train_loss = classifier.train_epoch(dataloader, optimizer, scheduler=None, device=torch.device("cpu"))
     metrics = classifier.evaluate(dataloader, torch.device("cpu"))
+    output_metrics = classifier.evaluate(dataloader, torch.device("cpu"), return_outputs=True)
     checkpoint_path = tmp_path / "dummy_transformer.pt"
     classifier.save(str(checkpoint_path))
 
@@ -93,4 +94,10 @@ def test_roberta_classifier_train_evaluate_and_save(tmp_path: Path) -> None:
 
     assert train_loss >= 0.0
     assert {"accuracy", "macro_f1", "val_loss"} <= set(metrics)
+    assert output_metrics["labels"] == [0, 1, 0, 1]
+    assert len(output_metrics["predictions"]) == 4
+    assert len(output_metrics["probabilities"]) == 4
+    assert len(output_metrics["probabilities"][0]) == 6
+    assert len(output_metrics["logits"]) == 4
+    assert len(output_metrics["logits"][0]) == 6
     assert checkpoint_path.exists()

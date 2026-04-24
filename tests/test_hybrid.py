@@ -143,6 +143,46 @@ def test_hybrid_ablation_matches_text_only_shapes():
     assert model.metadata_branch is None
 
 
+def test_hybrid_trainer_collects_prediction_outputs_for_metadata_and_ablation():
+    """Hybrid evaluation should expose logits/probabilities for downstream analysis."""
+
+    torch.manual_seed(0)
+    df = _toy_dataframe(rows=4)
+
+    metadata_model = _build_tiny_hybrid(use_metadata=True)
+    metadata_dataset = HybridLIARDataset(df=df, tokenizer=metadata_model.tokenizer, max_length=16)
+    metadata_loader = torch.utils.data.DataLoader(metadata_dataset, batch_size=2, shuffle=False)
+    metadata_metrics = HybridTrainer(metadata_model).evaluate(
+        metadata_loader,
+        torch.device("cpu"),
+        return_outputs=True,
+    )
+    assert metadata_metrics["labels"] == [0, 1, 2, 3]
+    assert len(metadata_metrics["predictions"]) == 4
+    assert len(metadata_metrics["probabilities"]) == 4
+    assert len(metadata_metrics["probabilities"][0]) == 6
+    assert len(metadata_metrics["logits"]) == 4
+    assert len(metadata_metrics["logits"][0]) == 6
+
+    textonly_model = _build_tiny_hybrid(use_metadata=False)
+    textonly_dataset = HybridLIARDataset(
+        df=df,
+        tokenizer=textonly_model.tokenizer,
+        max_length=16,
+        include_metadata=False,
+    )
+    textonly_loader = torch.utils.data.DataLoader(textonly_dataset, batch_size=2, shuffle=False)
+    textonly_metrics = HybridTrainer(textonly_model).evaluate(
+        textonly_loader,
+        torch.device("cpu"),
+        return_outputs=True,
+    )
+    assert textonly_metrics["labels"] == [0, 1, 2, 3]
+    assert len(textonly_metrics["predictions"]) == 4
+    assert len(textonly_metrics["probabilities"]) == 4
+    assert len(textonly_metrics["logits"]) == 4
+
+
 def test_tensors_from_dataframe_aligned_with_rows():
     df = _toy_dataframe(rows=5)
     dense, categorical = tensors_from_dataframe(df)

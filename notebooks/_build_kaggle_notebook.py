@@ -40,9 +40,9 @@ CELLS: list[dict] = [
     md(
         """# LIAR disinformation detection — Kaggle training notebook
 
-This notebook runs the full training pipeline (baseline → transformer → hybrid → hybrid-textonly)
-for the thesis project `nihsioK/nlp-disinformation-detection-aitu` on a Kaggle GPU instance
-(T4 × 2 recommended). Total expected runtime: **~60–90 min** for all four models.
+This notebook runs the full multi-seed training pipeline (baseline → transformer → hybrid
+→ hybrid-textonly) for the thesis project `nihsioK/nlp-disinformation-detection-aitu` on a
+Kaggle GPU instance (T4 × 2 recommended).
 
 **Before running:**
 
@@ -62,11 +62,13 @@ for the thesis project `nihsioK/nlp-disinformation-detection-aitu` on a Kaggle G
 
 - Clones the repo, installs the `ml` and `dev` extras.
 - Downloads the LIAR dataset.
-- Runs preprocessing and all four training scripts sequentially.
-- Collects `reports/*_logs/*_test_metrics.json` into a single summary.
-- Commits and pushes the JSON metric files back to the `main` branch so the numbers land
-  directly in git for the paper draft. Model weights (.pt, ~500 MB each) stay on Kaggle —
-  download them manually from the session output if you want local copies.
+- Runs preprocessing and all four training scripts for `SEEDS = [42, 13, 7]`.
+- Collects metrics into `results_summary.json` and `multi_seed_summary.json`.
+- Saves per-example TEST prediction JSONL files for significance, calibration, leakage, and
+  error analysis.
+- Commits and pushes metric JSON + prediction JSONL files back to the `main` branch.
+  Model weights (.pt, ~500 MB each) stay on Kaggle — download them manually from the session
+  output if you want local copies.
 """
     ),
     md(
@@ -94,6 +96,10 @@ RUN_BASELINE = True
 RUN_TRANSFORMER = True
 RUN_HYBRID = True
 RUN_HYBRID_TEXTONLY = True  # RQ2 ablation
+
+# Canonical multi-seed run for thesis/paper reporting.
+SEEDS = [42, 13, 7]
+PRIMARY_SEED = SEEDS[0]
 
 WORKDIR = "/kaggle/working"
 REPO_DIR = f"{WORKDIR}/{REPO_NAME}"
@@ -251,13 +257,61 @@ pass/fail signal even when training takes a while.
 """
     ),
     code(
-        """import subprocess, sys, time
+        """import json
+import os
+import shutil
+import subprocess
+import sys
+import time
 from pathlib import Path
 
-def run_stage(name: str, argv: list[str]) -> float:
+import yaml
+
+REPORTS_DIR = Path(REPO_DIR) / "reports"
+PREDICTIONS_DIR = REPORTS_DIR / "predictions"
+SEED_RESULTS: dict[int, dict] = {}
+
+
+def _load_yaml(path: Path) -> dict:
+    return yaml.safe_load(path.read_text(encoding="utf-8"))
+
+
+def _write_yaml(path: Path, payload: dict) -> None:
+    path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
+
+
+def configure_seed(seed: int) -> None:
+    baseline_path = Path(REPO_DIR) / "config" / "baseline.yml"
+    baseline_cfg = _load_yaml(baseline_path)
+    baseline_cfg.setdefault("random_forest", {})["random_state"] = int(seed)
+    _write_yaml(baseline_path, baseline_cfg)
+
+    transformer_path = Path(REPO_DIR) / "config" / "transformer.yaml"
+    transformer_cfg = _load_yaml(transformer_path)
+    transformer_cfg.setdefault("training", {})["seed"] = int(seed)
+    _write_yaml(transformer_path, transformer_cfg)
+
+    hybrid_path = Path(REPO_DIR) / "config" / "hybrid.yaml"
+    hybrid_cfg = _load_yaml(hybrid_path)
+    hybrid_cfg.setdefault("training", {})["seed"] = int(seed)
+    _write_yaml(hybrid_path, hybrid_cfg)
+
+
+def prepare_hybrid_textonly_config() -> None:
+    src_cfg = Path(REPO_DIR) / "config" / "hybrid.yaml"
+    tgt_cfg = Path(REPO_DIR) / "config" / "hybrid_textonly.yaml"
+    payload = _load_yaml(src_cfg)
+    payload.setdefault("model", {})["use_metadata"] = False
+    payload.setdefault("paths", {})["output_dir"] = "models/hybrid_textonly_liar/"
+    payload.setdefault("paths", {})["logs_dir"] = "reports/hybrid_textonly_logs/"
+    payload.setdefault("paths", {})["best_checkpoint"] = "models/hybrid_textonly_liar/best_model.pt"
+    _write_yaml(tgt_cfg, payload)
+
+
+def run_stage(name: str, argv: list[str], env: dict | None = None) -> float:
     start = time.time()
     print(f"\\n\\n=== {name} — starting ===")
-    result = subprocess.run(argv, cwd=REPO_DIR)
+    result = subprocess.run(argv, cwd=REPO_DIR, env=env)
     elapsed = time.time() - start
     status = "OK" if result.returncode == 0 else f"FAILED (exit {result.returncode})"
     print(f"\\n=== {name} — {status} in {elapsed/60:.1f} min ===")
@@ -265,39 +319,99 @@ def run_stage(name: str, argv: list[str]) -> float:
         raise RuntimeError(f"{name} failed")
     return elapsed
 
-stage_times = {}
-if RUN_BASELINE:
-    stage_times["baseline"] = run_stage("Baseline (TF-IDF + NB/SVM/RF)", [sys.executable, "scripts/train_baseline.py"])
-if RUN_TRANSFORMER:
-    stage_times["transformer"] = run_stage("Text-only RoBERTa", [sys.executable, "scripts/train_transformer.py"])
-if RUN_HYBRID:
-    stage_times["hybrid"] = run_stage("Hybrid (text + metadata)", [sys.executable, "scripts/train_hybrid.py"])
-if RUN_HYBRID_TEXTONLY:
-    # Reuse the hybrid pipeline but with use_metadata=False to produce the RQ2 ablation.
-    import shutil
-    src_cfg = Path(REPO_DIR) / "config" / "hybrid.yaml"
-    tgt_cfg = Path(REPO_DIR) / "config" / "hybrid_textonly.yaml"
-    text = src_cfg.read_text().replace("use_metadata: true", "use_metadata: false")
-    tgt_cfg.write_text(text)
-    # Same paths would overwrite — redirect output_dir / logs_dir for the ablation.
-    text2 = tgt_cfg.read_text()
-    text2 = text2.replace("models/hybrid_liar/", "models/hybrid_textonly_liar/")
-    text2 = text2.replace("reports/hybrid_logs/", "reports/hybrid_textonly_logs/")
-    tgt_cfg.write_text(text2)
-    env = {**os.environ, "HYBRID_CONFIG": "config/hybrid_textonly.yaml"}
-    start = time.time()
-    print("\\n\\n=== Hybrid text-only ablation — starting ===")
-    result = subprocess.run([sys.executable, "scripts/train_hybrid.py"], cwd=REPO_DIR, env=env)
-    elapsed = time.time() - start
-    if result.returncode != 0:
-        raise RuntimeError("Hybrid text-only ablation failed")
-    stage_times["hybrid_textonly"] = elapsed
-    print(f"\\n=== Hybrid text-only — OK in {elapsed/60:.1f} min ===")
+
+def snapshot_seed(seed: int) -> dict:
+    seed_dir = REPORTS_DIR / f"seed_{seed}"
+    if seed_dir.exists():
+        shutil.rmtree(seed_dir)
+    seed_dir.mkdir(parents=True, exist_ok=True)
+
+    files_to_copy = [
+        "baseline_detailed_metrics.json",
+        "transformer_logs/transformer_test_metrics.json",
+        "hybrid_logs/hybrid_test_metrics.json",
+        "hybrid_textonly_logs/hybrid_test_metrics.json",
+    ]
+    for rel in files_to_copy:
+        src = REPORTS_DIR / rel
+        if src.exists():
+            dst = seed_dir / rel
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dst)
+
+    if PREDICTIONS_DIR.exists():
+        dst_predictions = seed_dir / "predictions"
+        dst_predictions.mkdir(parents=True, exist_ok=True)
+        for src in sorted(PREDICTIONS_DIR.glob("*_test_predictions.jsonl")):
+            shutil.copy2(src, dst_predictions / src.name)
+
+    per_seed: dict[str, dict] = {}
+    baseline_path = seed_dir / "baseline_detailed_metrics.json"
+    if baseline_path.exists():
+        payload = json.loads(baseline_path.read_text(encoding="utf-8"))
+        for model_name, splits in payload.items():
+            if model_name.startswith("_") or not isinstance(splits, dict):
+                continue
+            test_split = splits.get("test")
+            if test_split:
+                per_seed[f"baseline_{model_name}"] = {
+                    "test_macro_f1": test_split.get("macro_f1"),
+                    "test_accuracy": test_split.get("accuracy"),
+                }
+
+    metric_paths = {
+        "transformer": seed_dir / "transformer_logs" / "transformer_test_metrics.json",
+        "hybrid": seed_dir / "hybrid_logs" / "hybrid_test_metrics.json",
+        "hybrid_textonly": seed_dir / "hybrid_textonly_logs" / "hybrid_test_metrics.json",
+    }
+    for model_name, path in metric_paths.items():
+        if path.exists():
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            per_seed[model_name] = {
+                "test_macro_f1": payload.get("test_macro_f1"),
+                "test_accuracy": payload.get("test_accuracy"),
+            }
+    return per_seed
+
+
+stage_times: dict[str, float] = {}
+for seed in SEEDS:
+    print(f"\\n\\n######## SEED {seed} ########")
+    configure_seed(seed)
+    if PREDICTIONS_DIR.exists():
+        shutil.rmtree(PREDICTIONS_DIR)
+    PREDICTIONS_DIR.mkdir(parents=True, exist_ok=True)
+
+    if RUN_BASELINE:
+        stage_times[f"seed_{seed}_baseline"] = run_stage(
+            f"[seed {seed}] Baseline (TF-IDF + NB/SVM/RF)",
+            [sys.executable, "scripts/train_baseline.py"],
+        )
+    if RUN_TRANSFORMER:
+        stage_times[f"seed_{seed}_transformer"] = run_stage(
+            f"[seed {seed}] Text-only RoBERTa",
+            [sys.executable, "scripts/train_transformer.py"],
+        )
+    if RUN_HYBRID:
+        stage_times[f"seed_{seed}_hybrid"] = run_stage(
+            f"[seed {seed}] Hybrid (text + metadata)",
+            [sys.executable, "scripts/train_hybrid.py"],
+        )
+    if RUN_HYBRID_TEXTONLY:
+        prepare_hybrid_textonly_config()
+        env = {**os.environ, "HYBRID_CONFIG": "config/hybrid_textonly.yaml"}
+        stage_times[f"seed_{seed}_hybrid_textonly"] = run_stage(
+            f"[seed {seed}] Hybrid text-only ablation",
+            [sys.executable, "scripts/train_hybrid.py"],
+            env=env,
+        )
+
+    SEED_RESULTS[seed] = snapshot_seed(seed)
 
 print("\\n\\nSTAGE TIMES (minutes):")
 for stage, seconds in stage_times.items():
-    print(f"  {stage:22s} {seconds/60:6.1f}")
-print(f"  {'TOTAL':22s} {sum(stage_times.values())/60:6.1f}")
+    print(f"  {stage:32s} {seconds/60:6.1f}")
+print(f"  {'TOTAL':32s} {sum(stage_times.values())/60:6.1f}")
 """
     ),
     md(
@@ -312,26 +426,113 @@ that you can paste straight into the paper's results table.
         """import json
 from pathlib import Path
 
-METRIC_FILES = {
-    "baseline":        "reports/baseline_detailed_metrics.json",
-    "transformer":     "reports/transformer_logs/transformer_test_metrics.json",
-    "hybrid":          "reports/hybrid_logs/hybrid_test_metrics.json",
-    "hybrid_textonly": "reports/hybrid_textonly_logs/hybrid_test_metrics.json",
+import numpy as np
+
+REPORTS_DIR = Path(REPO_DIR) / "reports"
+
+
+def _read_json(path: Path) -> dict:
+    if path.exists():
+        return json.loads(path.read_text(encoding="utf-8"))
+    return {"_note": f"not found at {path}"}
+
+
+primary_dir = REPORTS_DIR / f"seed_{PRIMARY_SEED}"
+SUMMARY_FILES = {
+    "baseline": primary_dir / "baseline_detailed_metrics.json",
+    "transformer": primary_dir / "transformer_logs" / "transformer_test_metrics.json",
+    "hybrid": primary_dir / "hybrid_logs" / "hybrid_test_metrics.json",
+    "hybrid_textonly": primary_dir / "hybrid_textonly_logs" / "hybrid_test_metrics.json",
 }
 
-summary = {}
-for name, rel in METRIC_FILES.items():
-    path = Path(REPO_DIR) / rel
-    if path.exists():
-        summary[name] = json.loads(path.read_text())
-    else:
-        summary[name] = {"_note": f"not found at {rel}"}
+summary = {
+    "_primary_seed": PRIMARY_SEED,
+    "_note": (
+        "Single-seed payloads for quick inspection; use multi_seed_summary.json "
+        "for reported thesis/paper means."
+    ),
+}
+for name, path in SUMMARY_FILES.items():
+    summary[name] = _read_json(path)
 
-summary_path = Path(REPO_DIR) / "reports" / "results_summary.json"
+summary_path = REPORTS_DIR / "results_summary.json"
 summary_path.parent.mkdir(parents=True, exist_ok=True)
-summary_path.write_text(json.dumps(summary, indent=2))
+summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
 print(json.dumps(summary, indent=2))
 print(f"\\nSaved: {summary_path}")
+
+# Build multi-seed macro-F1/accuracy means from the per-seed snapshots.
+per_seed_metrics: dict[str, dict] = {}
+for seed in SEEDS:
+    seed_dir = REPORTS_DIR / f"seed_{seed}"
+    per_model: dict[str, dict] = {}
+
+    baseline_path = seed_dir / "baseline_detailed_metrics.json"
+    if baseline_path.exists():
+        payload = _read_json(baseline_path)
+        for model_name, splits in payload.items():
+            if model_name.startswith("_") or not isinstance(splits, dict):
+                continue
+            test_split = splits.get("test")
+            if test_split:
+                per_model[f"baseline_{model_name}"] = {
+                    "test_macro_f1": test_split.get("macro_f1"),
+                    "test_accuracy": test_split.get("accuracy"),
+                }
+
+    deep_paths = {
+        "transformer": seed_dir / "transformer_logs" / "transformer_test_metrics.json",
+        "hybrid": seed_dir / "hybrid_logs" / "hybrid_test_metrics.json",
+        "hybrid_textonly": seed_dir / "hybrid_textonly_logs" / "hybrid_test_metrics.json",
+    }
+    for model_name, path in deep_paths.items():
+        if path.exists():
+            payload = _read_json(path)
+            per_model[model_name] = {
+                "test_macro_f1": payload.get("test_macro_f1"),
+                "test_accuracy": payload.get("test_accuracy"),
+            }
+
+    per_seed_metrics[str(seed)] = per_model
+
+model_names = sorted({name for metrics in per_seed_metrics.values() for name in metrics})
+rows = []
+for model_name in model_names:
+    macro_values = [
+        metrics[model_name]["test_macro_f1"]
+        for metrics in per_seed_metrics.values()
+        if model_name in metrics and metrics[model_name]["test_macro_f1"] is not None
+    ]
+    accuracy_values = [
+        metrics[model_name]["test_accuracy"]
+        for metrics in per_seed_metrics.values()
+        if model_name in metrics and metrics[model_name]["test_accuracy"] is not None
+    ]
+    rows.append(
+        {
+            "model": model_name,
+            "n_seeds": len(macro_values),
+            "test_macro_f1_mean": float(np.mean(macro_values)) if macro_values else None,
+            "test_macro_f1_std": (
+                float(np.std(macro_values, ddof=1)) if len(macro_values) > 1 else 0.0
+            ),
+            "test_accuracy_mean": float(np.mean(accuracy_values)) if accuracy_values else None,
+            "test_accuracy_std": (
+                float(np.std(accuracy_values, ddof=1)) if len(accuracy_values) > 1 else 0.0
+            ),
+        }
+    )
+
+multi_seed_payload = {
+    "seeds": SEEDS,
+    "primary_seed": PRIMARY_SEED,
+    "summary": rows,
+    "per_seed_metrics": per_seed_metrics,
+}
+multi_seed_path = REPORTS_DIR / "multi_seed_summary.json"
+multi_seed_path.write_text(json.dumps(multi_seed_payload, indent=2), encoding="utf-8")
+print(f"Saved: {multi_seed_path}")
+print(json.dumps(multi_seed_payload, indent=2))
 """
     ),
     md(
@@ -366,20 +567,30 @@ else:
     auth_remote = f"https://{GITHUB_USER}:{GH_PAT}@github.com/{GITHUB_USER}/{REPO_NAME}.git"
     subprocess.run(["git", "remote", "set-url", "origin", auth_remote], cwd=REPO_DIR, check=True)
 
-    # Stage only the whitelisted JSON metric files.
-    files = [
-        "reports/results_summary.json",
-        "reports/baseline_detailed_metrics.json",
-        "reports/transformer_logs/transformer_test_metrics.json",
-        "reports/hybrid_logs/hybrid_test_metrics.json",
-        "reports/hybrid_textonly_logs/hybrid_test_metrics.json",
-    ]
-    for f in files:
-        p = os.path.join(REPO_DIR, f)
-        if os.path.exists(p):
-            subprocess.run(["git", "add", "-f", f], cwd=REPO_DIR, check=True)
+    # Stage only the reproducibility artifacts, not model weights or CSV logs.
+    from pathlib import Path
 
-    diff = subprocess.run(["git", "diff", "--cached", "--stat"], cwd=REPO_DIR, capture_output=True, text=True)
+    reports_dir = Path(REPO_DIR) / "reports"
+    files = [
+        reports_dir / "results_summary.json",
+        reports_dir / "multi_seed_summary.json",
+        reports_dir / "baseline_detailed_metrics.json",
+    ]
+    files.extend(reports_dir.glob("*_logs/*_test_metrics.json"))
+    files.extend((reports_dir / "predictions").glob("*.jsonl"))
+    files.extend(reports_dir.glob("seed_*/**/*.json"))
+    files.extend(reports_dir.glob("seed_*/**/*.jsonl"))
+
+    for path in sorted({p for p in files if p.exists()}):
+        rel = path.relative_to(REPO_DIR)
+        subprocess.run(["git", "add", "-f", str(rel)], cwd=REPO_DIR, check=True)
+
+    diff = subprocess.run(
+        ["git", "diff", "--cached", "--stat"],
+        cwd=REPO_DIR,
+        capture_output=True,
+        text=True,
+    )
     if not diff.stdout.strip():
         print("No metric file changes to commit.")
     else:
@@ -714,7 +925,9 @@ subprocess.run(
     [\"zip\", \"-r\", \"/kaggle/working/reports.zip\",
      \"reports/transformer_logs\", \"reports/hybrid_logs\",
      \"reports/hybrid_textonly_logs\", \"reports/baseline_detailed_metrics.json\",
-     \"reports/results_summary.json\", \"reports/figures_all\"],
+     \"reports/results_summary.json\", \"reports/multi_seed_summary.json\",
+     \"reports/predictions\", \"reports/seed_42\", \"reports/seed_13\",
+     \"reports/seed_7\", \"reports/figures_all\"],
     cwd=REPO_DIR,
 )
 print(\"Zipped reports     to /kaggle/working/reports.zip — download from the Output tab.\")
@@ -724,8 +937,8 @@ print(\"Zipped reports     to /kaggle/working/reports.zip — download from the 
         """## Done
 
 - Training logs (per-epoch CSV, full console output) stayed on the Kaggle session.
-- Test-split JSON metrics were pushed to GitHub (`main` branch) — inspect them in the repo's
-  `reports/` folder and paste them into the paper's results table.
+- Test-split JSON metrics, multi-seed summaries, and prediction JSONL files were pushed to
+  GitHub (`main` branch) for reproducible paper analysis.
 - Dissertation figures are under `reports/figures_all/` and bundled in `figures.zip`.
 - Model weights are available in the Output tab via `models.zip`.
 """

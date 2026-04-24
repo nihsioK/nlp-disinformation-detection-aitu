@@ -167,7 +167,7 @@ class RoBERTaClassifier:
 
         return total_loss / max(total_batches, 1)
 
-    def evaluate(self, dataloader, device) -> dict:
+    def evaluate(self, dataloader, device, return_outputs: bool = False) -> dict:
         """Evaluate the model on a dataloader."""
 
         self.model.eval()
@@ -175,6 +175,8 @@ class RoBERTaClassifier:
         total_batches = 0
         predictions: list[int] = []
         labels: list[int] = []
+        logits_rows: list[list[float]] = []
+        probability_rows: list[list[float]] = []
 
         with torch.no_grad():
             for batch in dataloader:
@@ -192,9 +194,17 @@ class RoBERTaClassifier:
                 total_batches += 1
                 predictions.extend(batch_predictions.cpu().tolist())
                 labels.extend(batch_labels.cpu().tolist())
+                if return_outputs:
+                    logits_rows.extend(logits.detach().cpu().tolist())
+                    probability_rows.extend(torch.softmax(logits, dim=1).detach().cpu().tolist())
 
         metrics = compute_metrics(labels, predictions, self.label_names)
         metrics["val_loss"] = total_loss / max(total_batches, 1)
+        if return_outputs:
+            metrics["labels"] = labels
+            metrics["predictions"] = predictions
+            metrics["probabilities"] = probability_rows
+            metrics["logits"] = logits_rows
         return metrics
 
     def save(self, path: str) -> None:

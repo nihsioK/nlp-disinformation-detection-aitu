@@ -30,11 +30,18 @@ os.environ.setdefault("XDG_CACHE_HOME", str(REPO_ROOT / ".cache"))
 
 from src.disinfo_detection.evaluation import (
     append_run_history,
+    build_env_record,
+    build_prediction_records,
     compare_models,
     compute_metrics,
     plot_confusion_matrix,
+    write_jsonl_records,
 )
-from src.disinfo_detection.models_baseline import TFIDFBaseline, load_dataset_config
+from src.disinfo_detection.models_baseline import (
+    TFIDFBaseline,
+    load_baseline_config,
+    load_dataset_config,
+)
 
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s — %(levelname)s — %(message)s")
@@ -57,6 +64,7 @@ def main() -> None:
     """Train and evaluate all configured TF-IDF baselines on LIAR valid + test."""
 
     dataset_config = load_dataset_config()
+    baseline_config = load_baseline_config()
     liar_cfg = dataset_config["liar"]
     processed_dir = Path(liar_cfg["processed_dir"])
     train_df = load_processed_split("train", processed_dir)
@@ -74,12 +82,16 @@ def main() -> None:
     models_dir = Path("models")
     reports_dir = Path("reports")
     figures_dir = reports_dir / "figures"
+    predictions_dir = reports_dir / "predictions"
     models_dir.mkdir(parents=True, exist_ok=True)
     reports_dir.mkdir(parents=True, exist_ok=True)
+    predictions_dir.mkdir(parents=True, exist_ok=True)
     if ENABLE_FIGURES:
         figures_dir.mkdir(parents=True, exist_ok=True)
 
     run_timestamp = datetime.now(timezone.utc).isoformat()
+    run_seed = int(baseline_config.get("random_forest", {}).get("random_state", 42))
+    environment = build_env_record(seed=run_seed, device="cpu", run_timestamp=run_timestamp)
     summary_rows: list[dict[str, float | str]] = []
     metrics_by_model: dict[str, dict] = {}
     detailed_results: dict[str, dict] = {}
@@ -95,6 +107,7 @@ def main() -> None:
         valid_predictions = model.predict(X_valid)
         valid_metrics = compute_metrics(y_valid, valid_predictions, label_names)
         test_predictions = model.predict(X_test)
+        test_probabilities = model.predict_proba(X_test)
         test_metrics = compute_metrics(y_test, test_predictions, label_names)
         metrics_by_model[classifier_type] = test_metrics
 
@@ -118,6 +131,19 @@ def main() -> None:
             test_metrics["accuracy"],
             test_metrics["macro_f1"],
         )
+        prediction_records = build_prediction_records(
+            frame=test_df,
+            predictions=test_predictions,
+            probabilities=test_probabilities,
+            logits=None,
+            label_names=label_names,
+            model_name=f"baseline_{classifier_type}",
+            seed=run_seed,
+            split="test",
+        )
+        prediction_path = predictions_dir / f"baseline_{classifier_type}_test_predictions.jsonl"
+        write_jsonl_records(prediction_records, prediction_path)
+        logger.info("Saved baseline predictions to %s", prediction_path)
 
         summary_rows.append(
             {
@@ -167,6 +193,7 @@ def main() -> None:
             }
             for key, value in detailed_results.items()
         }
+        compact["_environment"] = environment
         json.dump(compact, fp, indent=2)
 
     if ENABLE_FIGURES:

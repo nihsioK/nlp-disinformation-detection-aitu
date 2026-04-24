@@ -45,7 +45,13 @@ os.environ.setdefault("MPLCONFIGDIR", str(MATPLOTLIB_CACHE_DIR))
 os.environ.setdefault("XDG_CACHE_HOME", str(REPO_ROOT / ".cache"))
 
 from src.disinfo_detection.datasets_hybrid import HybridLIARDataset
-from src.disinfo_detection.evaluation import append_run_history, plot_training_history
+from src.disinfo_detection.evaluation import (
+    append_run_history,
+    build_env_record,
+    build_prediction_records,
+    plot_training_history,
+    write_jsonl_records,
+)
 from src.disinfo_detection.metadata_features import MetadataSpec, describe_feature_layout
 from src.disinfo_detection.models_baseline import load_dataset_config
 from src.disinfo_detection.models_hybrid import HybridClassifier, HybridTrainer
@@ -263,8 +269,10 @@ def main() -> None:
     output_dir = Path(paths_cfg["output_dir"])
     logs_dir = Path(paths_cfg["logs_dir"])
     figures_dir = Path("reports/figures")
+    predictions_dir = Path("reports/predictions")
     output_dir.mkdir(parents=True, exist_ok=True)
     logs_dir.mkdir(parents=True, exist_ok=True)
+    predictions_dir.mkdir(parents=True, exist_ok=True)
     if ENABLE_FIGURES:
         figures_dir.mkdir(parents=True, exist_ok=True)
 
@@ -272,6 +280,11 @@ def main() -> None:
     epochs_without_improvement = 0
     patience = int(training_cfg.get("early_stopping_patience", 0))
     run_timestamp = datetime.now(timezone.utc).isoformat()
+    environment = build_env_record(
+        seed=int(training_cfg["seed"]),
+        device=device,
+        run_timestamp=run_timestamp,
+    )
     history_rows: list[dict[str, float | int | str]] = []
 
     for epoch in range(1, training_cfg["epochs"] + 1):
@@ -333,12 +346,26 @@ def main() -> None:
     if best_path.exists():
         trainer.load(str(best_path))
         model.to(device)
-    test_metrics = trainer.evaluate(test_loader, device)
+    test_metrics = trainer.evaluate(test_loader, device, return_outputs=True)
     logger.info(
         "TEST — macro-F1 %.4f — accuracy %.4f",
         test_metrics["macro_f1"],
         test_metrics["accuracy"],
     )
+    prediction_model_name = "hybrid" if include_metadata else "hybrid_textonly"
+    prediction_records = build_prediction_records(
+        frame=test_df,
+        predictions=test_metrics["predictions"],
+        probabilities=test_metrics["probabilities"],
+        logits=test_metrics["logits"],
+        label_names=liar_cfg["label_names"],
+        model_name=prediction_model_name,
+        seed=int(training_cfg["seed"]),
+        split="test",
+    )
+    prediction_path = predictions_dir / f"{prediction_model_name}_test_predictions.jsonl"
+    write_jsonl_records(prediction_records, prediction_path)
+    logger.info("Saved hybrid predictions to %s", prediction_path)
 
     test_summary = {
         "best_val_macro_f1": best_macro_f1,
@@ -353,6 +380,7 @@ def main() -> None:
         "seed": int(training_cfg["seed"]),
         "run_timestamp": run_timestamp,
         "device": str(device),
+        "environment": environment,
     }
     test_json_path = logs_dir / "hybrid_test_metrics.json"
     with test_json_path.open("w", encoding="utf-8") as fp:

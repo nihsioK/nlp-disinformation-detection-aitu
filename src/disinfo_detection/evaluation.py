@@ -2,10 +2,172 @@
 
 from __future__ import annotations
 
+import json
+import platform
+import subprocess
+import sys
 from pathlib import Path
+from typing import Any, Sequence
 
+import numpy as np
 import pandas as pd
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, f1_score
+
+
+def _optional_version(module_name: str) -> str:
+    """Return an installed module version, or `unavailable` if it cannot load."""
+
+    try:
+        module = __import__(module_name)
+    except Exception:
+        return "unavailable"
+    return str(getattr(module, "__version__", "unknown"))
+
+
+def _git_sha() -> str:
+    """Return the current git SHA, or `unknown` outside a git checkout."""
+
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            capture_output=True,
+            check=True,
+            text=True,
+        )
+    except Exception:
+        return "unknown"
+    return result.stdout.strip() or "unknown"
+
+
+def build_env_record(seed: int, device: str | Any, run_timestamp: str) -> dict[str, Any]:
+    """Build a reproducibility fingerprint for an experiment run.
+
+    Args:
+        seed: Random seed used by the run.
+        device: Device string or `torch.device` used for inference/training.
+        run_timestamp: UTC timestamp captured by the training script.
+
+    Returns:
+        Dictionary suitable for embedding in metrics JSON files.
+    """
+
+    return {
+        "git_sha": _git_sha(),
+        "python_version": platform.python_version(),
+        "python_executable": sys.executable,
+        "torch_version": _optional_version("torch"),
+        "transformers_version": _optional_version("transformers"),
+        "device": str(device),
+        "seed": int(seed),
+        "run_timestamp": run_timestamp,
+    }
+
+
+def _native_scalar(value: Any) -> Any:
+    """Convert pandas/numpy scalar values to JSON-friendly Python values."""
+
+    if pd.isna(value):
+        return None
+    if isinstance(value, np.generic):
+        return value.item()
+    return value
+
+
+def _float_list(values: Sequence[float] | np.ndarray | None) -> list[float] | None:
+    """Convert a vector-like object to a list of floats."""
+
+    if values is None:
+        return None
+    return [float(value) for value in list(values)]
+
+
+def _label_name(label_id: int, label_names: Sequence[str]) -> str:
+    """Map an integer label id to a human-readable label."""
+
+    if 0 <= label_id < len(label_names):
+        return str(label_names[label_id])
+    return str(label_id)
+
+
+def build_prediction_records(
+    frame: pd.DataFrame,
+    predictions: Sequence[int],
+    probabilities: Sequence[Sequence[float]] | np.ndarray | None,
+    logits: Sequence[Sequence[float]] | np.ndarray | None,
+    label_names: Sequence[str],
+    model_name: str,
+    seed: int,
+    split: str = "test",
+) -> list[dict[str, Any]]:
+    """Build per-example prediction records for downstream analysis.
+
+    Args:
+        frame: DataFrame aligned to the predictions.
+        predictions: Predicted integer label ids.
+        probabilities: Per-class probabilities aligned to `frame`.
+        logits: Per-class logits/scores aligned to `frame`, or `None` for models
+            that do not expose logits.
+        label_names: Ordered label names.
+        model_name: Stable model identifier for the artifact.
+        seed: Random seed used by the run.
+        split: Dataset split name.
+
+    Returns:
+        List of JSON-serializable prediction records.
+    """
+
+    if len(frame) != len(predictions):
+        raise ValueError("frame and predictions must have the same length.")
+    if probabilities is not None and len(probabilities) != len(frame):
+        raise ValueError("probabilities and frame must have the same length.")
+    if logits is not None and len(logits) != len(frame):
+        raise ValueError("logits and frame must have the same length.")
+
+    records: list[dict[str, Any]] = []
+    probability_rows = probabilities if probabilities is not None else [None] * len(frame)
+    logit_rows = logits if logits is not None else [None] * len(frame)
+
+    for row_index, (_, row) in enumerate(frame.iterrows()):
+        true_id = int(row["label_id"])
+        pred_id = int(predictions[row_index])
+        statement = row.get(
+            "statement",
+            row.get("statement_raw", row.get("statement_transformer", "")),
+        )
+        records.append(
+            {
+                "model": model_name,
+                "seed": int(seed),
+                "split": split,
+                "row_index": int(row_index),
+                "id": _native_scalar(row.get("id")),
+                "statement": _native_scalar(statement),
+                "label_id": true_id,
+                "true_label": _label_name(true_id, label_names),
+                "pred_label_id": pred_id,
+                "pred_label": _label_name(pred_id, label_names),
+                "correct": bool(pred_id == true_id),
+                "speaker": _native_scalar(row.get("speaker")),
+                "party": _native_scalar(row.get("party")),
+                "job": _native_scalar(row.get("job")),
+                "state": _native_scalar(row.get("state")),
+                "subject": _native_scalar(row.get("subject")),
+                "context": _native_scalar(row.get("context")),
+                "probabilities": _float_list(probability_rows[row_index]),
+                "logits": _float_list(logit_rows[row_index]),
+            }
+        )
+    return records
+
+
+def write_jsonl_records(records: list[dict[str, Any]], output_path: str | Path) -> None:
+    """Write JSON-serializable records to a JSON Lines file."""
+
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as file:
+        for record in records:
+            file.write(json.dumps(record, ensure_ascii=False) + "\n")
 
 
 def compute_metrics(y_true: list[int], y_pred: list[int], label_names: list[str]) -> dict:
