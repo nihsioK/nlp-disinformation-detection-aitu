@@ -35,6 +35,26 @@ TOKEN_PATTERN = re.compile(r"\$?\d[\d,\.]*%?|[a-z]+(?:'[a-z]+)?")
 
 DEFAULT_CREDIBILITY_VECTOR = [0.2] * 5
 
+# Maps an integer LIAR label id to the credibility-count column whose value
+# includes the row's own statement at dataset-collection time. Used to remove
+# the row-level leakage when building the `*_corrected` credibility features.
+# Label 5 ("true") has no corresponding count column in LIAR.
+LABEL_TO_COUNT_COLUMN: dict[int, str] = {
+    0: "pants_on_fire_counts",
+    1: "false_counts",
+    2: "barely_true_counts",
+    3: "half_true_counts",
+    4: "mostly_true_counts",
+}
+
+CREDIBILITY_COUNT_COLS = (
+    "barely_true_counts",
+    "false_counts",
+    "half_true_counts",
+    "mostly_true_counts",
+    "pants_on_fire_counts",
+)
+
 # Sklearn's ENGLISH_STOP_WORDS list, adapted. We removed 'not', 'no', 'nor' because
 # negation is a very strong signal for political truthfulness on LIAR.
 ENGLISH_STOPWORDS = {
@@ -126,39 +146,47 @@ def clean_text_for_transformer(text: str) -> str:
     return MULTISPACE_PATTERN.sub(" ", normalized).strip()
 
 
-def build_credibility_vector(row: pd.Series) -> list[float]:
-    """Build a normalized five-dimensional credibility probability vector."""
+def _row_counts(row: pd.Series) -> dict[str, float]:
+    """Return the row's five credibility counts as floats, defaulting to 0."""
 
-    columns = [
-        "barely_true_counts",
-        "false_counts",
-        "half_true_counts",
-        "mostly_true_counts",
-        "pants_on_fire_counts",
-    ]
-    counts = [float(pd.to_numeric(row.get(column, 0), errors="coerce") or 0.0) for column in columns]
-    total = sum(counts)
-    if total <= 0:
-        return DEFAULT_CREDIBILITY_VECTOR.copy()
-
-    return [count / total for count in counts]
+    return {
+        column: float(pd.to_numeric(row.get(column, 0), errors="coerce") or 0.0)
+        for column in CREDIBILITY_COUNT_COLS
+    }
 
 
-def build_credibility_scalars(row: pd.Series) -> dict[str, float]:
-    """Build scalar credibility summary features complementary to the 5-vector.
+def _decrement_counts_for_label(counts: dict[str, float], label_id: int) -> dict[str, float]:
+    """Return `counts` with the bin matching `label_id` decremented by 1.
 
-    Returns:
-        - `cred_total`: raw total prior-statement count for the speaker.
-        - `cred_log_total`: log1p of the total (handles long-tail speakers).
-        - `cred_pants_share`: fraction of prior statements rated 'pants_on_fire'.
-        - `cred_false_share`: fraction rated 'false' or 'pants_on_fire' combined.
+    LIAR's count columns are PolitiFact totals at collection time, so for any
+    row that appears in the labelled split the row's own verdict has already
+    been folded into the speaker's counts. Subtracting one from the matching
+    bin removes that leakage. Label 5 ("true") has no corresponding column and
+    is left unchanged.
     """
 
-    barely = float(pd.to_numeric(row.get("barely_true_counts", 0), errors="coerce") or 0.0)
-    false = float(pd.to_numeric(row.get("false_counts", 0), errors="coerce") or 0.0)
-    half = float(pd.to_numeric(row.get("half_true_counts", 0), errors="coerce") or 0.0)
-    mostly = float(pd.to_numeric(row.get("mostly_true_counts", 0), errors="coerce") or 0.0)
-    pants = float(pd.to_numeric(row.get("pants_on_fire_counts", 0), errors="coerce") or 0.0)
+    target_column = LABEL_TO_COUNT_COLUMN.get(int(label_id))
+    if target_column is None:
+        return counts
+    adjusted = dict(counts)
+    if adjusted[target_column] > 0:
+        adjusted[target_column] -= 1.0
+    return adjusted
+
+
+def _credibility_vector_from_counts(counts: dict[str, float]) -> list[float]:
+    total = sum(counts[column] for column in CREDIBILITY_COUNT_COLS)
+    if total <= 0:
+        return DEFAULT_CREDIBILITY_VECTOR.copy()
+    return [counts[column] / total for column in CREDIBILITY_COUNT_COLS]
+
+
+def _credibility_scalars_from_counts(counts: dict[str, float]) -> dict[str, float]:
+    barely = counts["barely_true_counts"]
+    false = counts["false_counts"]
+    half = counts["half_true_counts"]
+    mostly = counts["mostly_true_counts"]
+    pants = counts["pants_on_fire_counts"]
     total = barely + false + half + mostly + pants
     if total <= 0:
         return {
@@ -175,8 +203,56 @@ def build_credibility_scalars(row: pd.Series) -> dict[str, float]:
     }
 
 
+def build_credibility_vector(row: pd.Series) -> list[float]:
+    """Build a normalized five-dimensional credibility probability vector."""
+
+    return _credibility_vector_from_counts(_row_counts(row))
+
+
+def build_credibility_vector_corrected(row: pd.Series, label_id: int) -> list[float]:
+    """Same as `build_credibility_vector` but removes the row's own contribution.
+
+    Used to construct the leakage-corrected credibility features documented in
+    `docs/HYBRID_MODEL.md`. The decrement target column is derived from
+    `LABEL_TO_COUNT_COLUMN`; rows with `label_id == 5` ("true") are returned
+    unchanged because LIAR has no `true_counts` column.
+    """
+
+    return _credibility_vector_from_counts(
+        _decrement_counts_for_label(_row_counts(row), label_id)
+    )
+
+
+def build_credibility_scalars(row: pd.Series) -> dict[str, float]:
+    """Build scalar credibility summary features complementary to the 5-vector.
+
+    Returns:
+        - `cred_total`: raw total prior-statement count for the speaker.
+        - `cred_log_total`: log1p of the total (handles long-tail speakers).
+        - `cred_pants_share`: fraction of prior statements rated 'pants_on_fire'.
+        - `cred_false_share`: fraction rated 'false' or 'pants_on_fire' combined.
+    """
+
+    return _credibility_scalars_from_counts(_row_counts(row))
+
+
+def build_credibility_scalars_corrected(row: pd.Series, label_id: int) -> dict[str, float]:
+    """Same as `build_credibility_scalars` but with the row's bin decremented."""
+
+    return _credibility_scalars_from_counts(
+        _decrement_counts_for_label(_row_counts(row), label_id)
+    )
+
+
 def preprocess_dataframe(df: pd.DataFrame) -> pd.DataFrame:
-    """Apply text and credibility preprocessing to a LIAR DataFrame."""
+    """Apply text and credibility preprocessing to a LIAR DataFrame.
+
+    When `label_id` is present on the input frame this function additionally
+    emits leakage-corrected credibility columns (`credibility_corrected_*`,
+    `cred_*_corrected`) built from counts that exclude the row's own verdict.
+    Both column families are emitted side by side so a single pickle can drive
+    either reporting variant.
+    """
 
     processed = df.copy()
     processed["statement_clean"] = processed["statement"].apply(clean_text_for_tfidf)
@@ -193,4 +269,29 @@ def preprocess_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     scalar_rows = processed.apply(build_credibility_scalars, axis=1)
     scalar_frame = pd.DataFrame(scalar_rows.tolist(), index=processed.index)
 
-    return pd.concat([processed, expanded, scalar_frame], axis=1)
+    parts: list[pd.DataFrame] = [processed, expanded, scalar_frame]
+
+    if "label_id" in processed.columns:
+        corrected_vector_rows = processed.apply(
+            lambda row: build_credibility_vector_corrected(row, int(row["label_id"])),
+            axis=1,
+        )
+        corrected_vector_frame = pd.DataFrame(
+            corrected_vector_rows.tolist(),
+            columns=[f"credibility_corrected_{index}" for index in range(5)],
+            index=processed.index,
+        )
+        corrected_scalar_rows = processed.apply(
+            lambda row: build_credibility_scalars_corrected(row, int(row["label_id"])),
+            axis=1,
+        )
+        corrected_scalar_frame = pd.DataFrame(
+            corrected_scalar_rows.tolist(),
+            index=processed.index,
+        )
+        corrected_scalar_frame = corrected_scalar_frame.rename(
+            columns={column: f"{column}_corrected" for column in corrected_scalar_frame.columns}
+        )
+        parts.extend([corrected_vector_frame, corrected_scalar_frame])
+
+    return pd.concat(parts, axis=1)

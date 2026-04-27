@@ -1,4 +1,4 @@
-.PHONY: install download smoke preprocess baseline transformer hybrid hybrid-textonly train-all test clean
+.PHONY: install download smoke preprocess baseline transformer hybrid hybrid-textonly hybrid-leaky train-all test clean
 
 VENV ?= .venv
 PYTHON_BIN ?= python3.12
@@ -35,6 +35,14 @@ hybrid: $(PYTHON)
 hybrid-textonly: $(PYTHON)
 	sed 's/use_metadata: true/use_metadata: false/' config/hybrid.yaml > config/hybrid_textonly.yaml
 	HYBRID_CONFIG=config/hybrid_textonly.yaml $(PYTHON) scripts/train_hybrid.py
+
+# Leaky comparison: same hybrid pipeline but with credibility counts that still
+# include the row's own verdict, matching prior LIAR work (Wang 2017, Alhindi
+# 2018, Kirilin & Strube 2019). Keep this run for reporting alongside the
+# leakage-corrected default to disclose the size of the leakage gap.
+hybrid-leaky: $(PYTHON)
+	sed 's/leakage_corrected: true/leakage_corrected: false/' config/hybrid.yaml > config/hybrid_leaky.yaml
+	HYBRID_CONFIG=config/hybrid_leaky.yaml $(PYTHON) scripts/train_hybrid.py
 
 train-all: download preprocess baseline transformer hybrid
 

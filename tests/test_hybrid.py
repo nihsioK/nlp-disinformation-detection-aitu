@@ -190,3 +190,87 @@ def test_tensors_from_dataframe_aligned_with_rows():
     assert categorical.shape[0] == 5
     assert dense.dtype == torch.float32
     assert categorical.dtype == torch.int64
+
+
+def test_metadata_spec_supports_per_field_bucket_sizes():
+    spec = MetadataSpec(
+        categorical_fields=("speaker", "party"),
+        num_buckets={"speaker": 1024, "party": 32},
+    )
+    assert spec.field_bucket_sizes == (1024, 32)
+    assert spec.field_offsets == (0, 1024)
+    assert spec.total_buckets == 1024 + 32
+
+
+def test_categorical_matrix_respects_per_field_buckets():
+    df = _toy_dataframe(rows=8)
+    spec = MetadataSpec(
+        categorical_fields=("speaker", "party"),
+        num_buckets={"speaker": 1024, "party": 4},
+    )
+    matrix = build_categorical_matrix(df, spec=spec)
+    assert matrix.shape == (8, 2)
+    assert matrix[:, 0].max() < 1024
+    assert matrix[:, 1].max() < 4
+
+
+def test_metadata_branch_uses_total_buckets_for_embedding_table():
+    from src.disinfo_detection.models_hybrid import MetadataBranch
+
+    spec = MetadataSpec(
+        categorical_fields=("speaker", "party"),
+        num_buckets={"speaker": 1024, "party": 32},
+    )
+    branch = MetadataBranch(spec=spec, categorical_embedding_dim=4, output_dim=8)
+    assert branch.categorical_embedding.num_embeddings == 1024 + 32
+    assert tuple(branch.field_offsets.tolist()) == (0, 1024)
+
+
+def test_dense_matrix_uses_corrected_columns_when_flag_set():
+    df = _toy_dataframe(rows=3)
+    df["credibility_corrected_0"] = [0.4, 0.4, 0.4]
+    df["credibility_corrected_1"] = [0.2, 0.2, 0.2]
+    df["credibility_corrected_2"] = [0.2, 0.2, 0.2]
+    df["credibility_corrected_3"] = [0.1, 0.1, 0.1]
+    df["credibility_corrected_4"] = [0.1, 0.1, 0.1]
+    df["cred_total_corrected"] = [10.0, 12.0, 14.0]
+    df["cred_log_total_corrected"] = [2.4, 2.6, 2.7]
+    df["cred_pants_share_corrected"] = [0.1, 0.05, 0.0]
+    df["cred_false_share_corrected"] = [0.3, 0.25, 0.2]
+    spec = MetadataSpec(leakage_corrected=True)
+    dense = build_dense_matrix(df, spec=spec)
+    # First five columns should reflect the corrected credibility vector.
+    assert abs(dense[0, 0] - 0.4) < 1e-6
+    assert abs(dense[0, 1] - 0.2) < 1e-6
+
+
+def test_aggregate_seed_summaries_returns_mean_and_std():
+    from src.disinfo_detection.evaluation import aggregate_seed_summaries
+
+    summaries = [
+        {
+            "seed": 1,
+            "test_macro_f1": 0.4,
+            "test_accuracy": 0.5,
+            "test_per_class_f1": {"a": 0.2, "b": 0.6},
+            "test_per_class_precision": {"a": 0.3, "b": 0.7},
+            "test_per_class_recall": {"a": 0.1, "b": 0.5},
+            "test_confusion_matrix_labels": ["a", "b"],
+        },
+        {
+            "seed": 2,
+            "test_macro_f1": 0.6,
+            "test_accuracy": 0.5,
+            "test_per_class_f1": {"a": 0.4, "b": 0.8},
+            "test_per_class_precision": {"a": 0.5, "b": 0.9},
+            "test_per_class_recall": {"a": 0.3, "b": 0.7},
+            "test_confusion_matrix_labels": ["a", "b"],
+        },
+    ]
+    aggregate = aggregate_seed_summaries(summaries)
+    assert aggregate["num_seeds"] == 2
+    assert aggregate["seeds"] == [1, 2]
+    assert abs(aggregate["test_macro_f1"]["mean"] - 0.5) < 1e-9
+    assert abs(aggregate["test_macro_f1"]["std"] - 0.1) < 1e-9
+    assert abs(aggregate["test_per_class_f1"]["mean"]["a"] - 0.3) < 1e-9
+    assert abs(aggregate["test_per_class_f1"]["std"]["b"] - 0.1) < 1e-9

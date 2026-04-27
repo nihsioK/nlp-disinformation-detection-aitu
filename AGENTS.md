@@ -289,3 +289,31 @@ All final metrics in the thesis and paper are reported on the **TEST split (1 28
   required archive: `/kaggle/working/disinformation_results.zip`.
 - The archive now contains metrics, prediction JSONL files, per-seed snapshots,
   logs, generated figures, and an `archive_manifest.json`.
+
+### [2026-04-27] — Leakage-corrected credibility, ordinal loss, per-field hash buckets, multi-seed loop
+
+- Preprocessing now emits `credibility_corrected_*` and `cred_*_corrected`
+  columns alongside the raw versions; counts have the row's own verdict
+  subtracted (label 5 / "true" has no counts column and is left unchanged).
+  `metadata.leakage_corrected: true` in `config/hybrid.yaml` is the new
+  defensible default; `make hybrid-leaky` reproduces the prior-art leaky
+  setup for disclosure.
+- `MetadataSpec.num_buckets` accepts a `{field: bucket_count}` dict;
+  `MetadataBranch` derives per-field offsets via `field_offsets`. Default
+  layout: `speaker=4096`, `subject/job/context=1024`, `state=256`, `party=64`.
+- New `src/disinfo_detection/losses.py` provides `OrdinalAwareLoss` (weighted
+  CE + squared EMD over softmax CDFs) and a `build_loss_module` config
+  factory. Both `RoBERTaClassifier` and `HybridTrainer` route loss through
+  the module; configs default to `loss.type: ordinal` with `emd_weight=0.5`.
+- `metadata_output_dim` raised from 64 to 128 in `config/hybrid.yaml` so the
+  metadata branch carries more weight relative to the 768-d `[CLS]` vector.
+- `training.seeds` (list) drives an in-script multi-seed loop in both
+  training scripts; per-seed JSON / JSONL / checkpoint artefacts are written
+  with a `_seed{N}` suffix and an aggregate `*_test_metrics_multiseed.json`
+  reports mean ± std macro-F1 / accuracy / per-class F1.
+- `notebooks/_build_kaggle_notebook.py::configure_seed` collapses the YAML
+  `seeds` list to a single-element list per outer-loop seed, so the Kaggle
+  outer loop continues to drive deterministic single-seed snapshots.
+- Tests: 34/34 green (was 16/16). New coverage for corrected credibility
+  columns, per-field bucket layout, EMD/ordinal loss properties, and seed
+  aggregation.

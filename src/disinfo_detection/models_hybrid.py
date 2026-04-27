@@ -34,6 +34,7 @@ import torch.nn as nn
 from transformers import AutoConfig, AutoModel, AutoTokenizer
 
 from src.disinfo_detection.evaluation import compute_metrics
+from src.disinfo_detection.losses import OrdinalAwareLoss
 from src.disinfo_detection.metadata_features import MetadataSpec
 from src.disinfo_detection.models_transformers import load_dataset_config
 
@@ -57,14 +58,15 @@ class MetadataBranch(nn.Module):
         self.categorical_embedding_dim = categorical_embedding_dim
         self.output_dim = output_dim
 
-        # One shared embedding table, with per-field offsets to avoid
-        # cross-field bucket collisions (each field gets its own bucket range).
-        self.num_total_buckets = spec.num_buckets * spec.num_categorical
+        # Shared embedding table partitioned by per-field offsets so each
+        # categorical field occupies its own bucket range. Per-field bucket
+        # sizes can vary (e.g., `speaker` gets more capacity than `party`).
+        self.num_total_buckets = spec.total_buckets
         self.categorical_embedding = nn.Embedding(
             num_embeddings=self.num_total_buckets,
             embedding_dim=categorical_embedding_dim,
         )
-        offsets = torch.arange(spec.num_categorical, dtype=torch.long) * spec.num_buckets
+        offsets = torch.tensor(spec.field_offsets, dtype=torch.long)
         self.register_buffer("field_offsets", offsets, persistent=False)
 
         categorical_flat_dim = categorical_embedding_dim * spec.num_categorical
@@ -198,17 +200,23 @@ class HybridTrainer:
         label_smoothing: float = 0.0,
         class_weights: torch.Tensor | None = None,
         dataset_config_path: str = "config/dataset.yaml",
+        loss_module: OrdinalAwareLoss | None = None,
     ) -> None:
         self.model = model
         self.label_smoothing = label_smoothing
         self.class_weights = class_weights
         dataset_config = load_dataset_config(dataset_config_path)
         self.label_names = dataset_config["liar"]["label_names"]
+        self.loss_module = loss_module or OrdinalAwareLoss(
+            num_classes=model.num_labels,
+            ce_weight=1.0,
+            emd_weight=0.0,
+            class_weights=class_weights,
+            label_smoothing=label_smoothing,
+        )
 
     def _loss_fn(self, logits: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
-        weight = self.class_weights.to(logits.device) if self.class_weights is not None else None
-        loss_fct = nn.CrossEntropyLoss(weight=weight, label_smoothing=self.label_smoothing)
-        return loss_fct(logits, labels)
+        return self.loss_module(logits, labels)
 
     def _move_batch(self, batch: dict[str, torch.Tensor], device: torch.device) -> dict[str, torch.Tensor]:
         moved = {

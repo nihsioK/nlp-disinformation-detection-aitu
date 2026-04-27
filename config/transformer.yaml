@@ -11,6 +11,9 @@
 # - warmup_ratio: 0.06, matching the original RoBERTa paper.
 # - added: label_smoothing (0.05) to regularize on ordinal labels.
 # - added: dropout 0.2 (was 0.1), mitigates overfitting on the small LIAR train set.
+# - added: multi-seed reporting (mean ± std over `seeds`).
+# - added: ordinal-aware loss (CE + squared EMD) so the truthfulness scale
+#   penalises distant confusions more than adjacent ones.
 
 model:
   name: roberta-base
@@ -32,7 +35,15 @@ training:
   label_smoothing: 0.05
   log_every_steps: 100
   seed: 42
+  seeds:
+    - 42
+    - 1337
+    - 2024
   early_stopping_patience: 2
+  loss:
+    type: ordinal
+    ce_weight: 1.0
+    emd_weight: 0.5
 
 runtime:
   device: auto

@@ -289,6 +289,54 @@ def compare_models(results: dict[str, dict], save_path: str | None = None) -> pd
     return frame
 
 
+def aggregate_seed_summaries(summaries: list[dict[str, Any]]) -> dict[str, Any]:
+    """Aggregate per-seed test-summary dicts into mean / std reports.
+
+    Each input summary is expected to expose `test_macro_f1`, `test_accuracy`,
+    `test_per_class_f1`, `test_per_class_precision`, `test_per_class_recall`,
+    and `seed`. The aggregate keeps every per-seed value alongside the mean
+    and population standard deviation so downstream code can build error bars
+    or run paired statistical tests.
+    """
+
+    if not summaries:
+        raise ValueError("aggregate_seed_summaries requires at least one summary")
+
+    seeds = [int(summary.get("seed", index)) for index, summary in enumerate(summaries)]
+    label_names = list(summaries[0].get("test_confusion_matrix_labels", []))
+
+    def _mean_std(values: list[float]) -> dict[str, Any]:
+        array = np.asarray(values, dtype=np.float64)
+        return {
+            "values": [float(value) for value in values],
+            "mean": float(array.mean()),
+            "std": float(array.std(ddof=0)),
+        }
+
+    def _aggregate_per_class(records: list[dict[str, float]]) -> dict[str, Any]:
+        names = label_names or list(records[0].keys())
+        per_seed = {name: [float(record.get(name, 0.0)) for record in records] for name in names}
+        means = {name: float(np.mean(values)) for name, values in per_seed.items()}
+        stds = {name: float(np.std(values, ddof=0)) for name, values in per_seed.items()}
+        return {"per_seed": per_seed, "mean": means, "std": stds}
+
+    macro_f1 = [float(summary["test_macro_f1"]) for summary in summaries]
+    accuracy = [float(summary["test_accuracy"]) for summary in summaries]
+    per_class_f1 = [summary["test_per_class_f1"] for summary in summaries]
+    per_class_precision = [summary["test_per_class_precision"] for summary in summaries]
+    per_class_recall = [summary["test_per_class_recall"] for summary in summaries]
+
+    return {
+        "num_seeds": len(summaries),
+        "seeds": seeds,
+        "test_macro_f1": _mean_std(macro_f1),
+        "test_accuracy": _mean_std(accuracy),
+        "test_per_class_f1": _aggregate_per_class(per_class_f1),
+        "test_per_class_precision": _aggregate_per_class(per_class_precision),
+        "test_per_class_recall": _aggregate_per_class(per_class_recall),
+    }
+
+
 def append_run_history(records: list[dict], output_path: str) -> pd.DataFrame:
     """Append experiment records to a CSV run-history log.
 

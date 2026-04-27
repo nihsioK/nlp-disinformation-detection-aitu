@@ -21,6 +21,7 @@ from torch.utils.data import Dataset
 from transformers import AutoConfig, AutoModelForSequenceClassification, AutoTokenizer
 
 from src.disinfo_detection.evaluation import compute_metrics
+from src.disinfo_detection.losses import OrdinalAwareLoss
 
 
 def load_transformer_config(config_path: str = "config/transformer.yaml") -> dict:
@@ -87,6 +88,7 @@ class RoBERTaClassifier:
         class_weights: torch.Tensor | None = None,
         model=None,
         tokenizer=None,
+        loss_module: OrdinalAwareLoss | None = None,
     ) -> None:
         self.model_name = model_name
         self.num_labels = num_labels
@@ -109,15 +111,18 @@ class RoBERTaClassifier:
         else:
             self.model = model
 
-    def _loss_fn(self, logits: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
-        """Compute cross-entropy loss with optional class weights and label smoothing."""
-
-        weight = self.class_weights.to(logits.device) if self.class_weights is not None else None
-        loss_fct = nn.CrossEntropyLoss(
-            weight=weight,
-            label_smoothing=self.label_smoothing,
+        self.loss_module = loss_module or OrdinalAwareLoss(
+            num_classes=num_labels,
+            ce_weight=1.0,
+            emd_weight=0.0,
+            class_weights=class_weights,
+            label_smoothing=label_smoothing,
         )
-        return loss_fct(logits, labels)
+
+    def _loss_fn(self, logits: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
+        """Delegate to the configured loss module (CE by default, EMD-aware when set)."""
+
+        return self.loss_module(logits, labels)
 
     def train_epoch(
         self,

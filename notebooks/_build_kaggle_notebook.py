@@ -60,7 +60,10 @@ Kaggle GPU instance (T4 × 2 recommended).
 
 - Clones the repo, installs the `ml` and `dev` extras.
 - Downloads the LIAR dataset.
-- Runs preprocessing and all four training scripts for `SEEDS = [42, 13, 7]`.
+- Runs preprocessing and the full multi-seed sweep (baseline + transformer + hybrid +
+  hybrid-textonly + hybrid-leaky) for `SEEDS = [42, 1337, 2024]`. The leakage-corrected
+  hybrid is the defensible thesis default; the leaky variant is reported alongside it
+  so reviewers can see the size of the credibility-count leakage gap.
 - Collects metrics into `results_summary.json` and `multi_seed_summary.json`.
 - Saves per-example TEST prediction JSONL files for significance, calibration, leakage, and
   error analysis.
@@ -83,11 +86,14 @@ BRANCH = "main"  # change to a feature branch if you're iterating
 # Which stages to run. Flip to False to skip individual stages during debugging.
 RUN_BASELINE = True
 RUN_TRANSFORMER = True
-RUN_HYBRID = True
-RUN_HYBRID_TEXTONLY = True  # RQ2 ablation
+RUN_HYBRID = True            # leakage-corrected hybrid (defensible thesis default)
+RUN_HYBRID_TEXTONLY = True   # RQ2 ablation (text-only via the hybrid pipeline)
+RUN_HYBRID_LEAKY = True      # prior-art comparison (credibility counts include the row's own verdict)
 
-# Canonical multi-seed run for thesis/paper reporting.
-SEEDS = [42, 13, 7]
+# Canonical multi-seed run for thesis/paper reporting. Must match
+# `training.seeds` in config/transformer.yaml and config/hybrid.yaml so
+# Kaggle and local headline numbers come from the same seed set.
+SEEDS = [42, 1337, 2024]
 PRIMARY_SEED = SEEDS[0]
 
 WORKDIR = "/kaggle/working"
@@ -275,14 +281,21 @@ def configure_seed(seed: int) -> None:
     baseline_cfg.setdefault("random_forest", {})["random_state"] = int(seed)
     _write_yaml(baseline_path, baseline_cfg)
 
+    # The training scripts now support an in-script multi-seed loop via
+    # `training.seeds`. The Kaggle notebook owns its own outer seed loop, so
+    # we collapse `seeds` to a single-element list per seed so each subprocess
+    # produces deterministic single-seed artifacts that snapshot_seed() can
+    # copy into reports/seed_<N>/ without collisions.
     transformer_path = Path(REPO_DIR) / "config" / "transformer.yaml"
     transformer_cfg = _load_yaml(transformer_path)
     transformer_cfg.setdefault("training", {})["seed"] = int(seed)
+    transformer_cfg["training"]["seeds"] = [int(seed)]
     _write_yaml(transformer_path, transformer_cfg)
 
     hybrid_path = Path(REPO_DIR) / "config" / "hybrid.yaml"
     hybrid_cfg = _load_yaml(hybrid_path)
     hybrid_cfg.setdefault("training", {})["seed"] = int(seed)
+    hybrid_cfg["training"]["seeds"] = [int(seed)]
     _write_yaml(hybrid_path, hybrid_cfg)
 
 
@@ -294,6 +307,19 @@ def prepare_hybrid_textonly_config() -> None:
     payload.setdefault("paths", {})["output_dir"] = "models/hybrid_textonly_liar/"
     payload.setdefault("paths", {})["logs_dir"] = "reports/hybrid_textonly_logs/"
     payload.setdefault("paths", {})["best_checkpoint"] = "models/hybrid_textonly_liar/best_model.pt"
+    _write_yaml(tgt_cfg, payload)
+
+
+def prepare_hybrid_leaky_config() -> None:
+    # Prior-art comparison: same hybrid model, but credibility counts still
+    # include the row's own verdict. Used to disclose the leakage gap.
+    src_cfg = Path(REPO_DIR) / "config" / "hybrid.yaml"
+    tgt_cfg = Path(REPO_DIR) / "config" / "hybrid_leaky.yaml"
+    payload = _load_yaml(src_cfg)
+    payload.setdefault("metadata", {})["leakage_corrected"] = False
+    payload.setdefault("paths", {})["output_dir"] = "models/hybrid_leaky_liar/"
+    payload.setdefault("paths", {})["logs_dir"] = "reports/hybrid_leaky_logs/"
+    payload.setdefault("paths", {})["best_checkpoint"] = "models/hybrid_leaky_liar/best_model.pt"
     _write_yaml(tgt_cfg, payload)
 
 
@@ -320,6 +346,7 @@ def snapshot_seed(seed: int) -> dict:
         "transformer_logs/transformer_test_metrics.json",
         "hybrid_logs/hybrid_test_metrics.json",
         "hybrid_textonly_logs/hybrid_test_metrics.json",
+        "hybrid_leaky_logs/hybrid_test_metrics.json",
     ]
     for rel in files_to_copy:
         src = REPORTS_DIR / rel
@@ -352,6 +379,7 @@ def snapshot_seed(seed: int) -> dict:
         "transformer": seed_dir / "transformer_logs" / "transformer_test_metrics.json",
         "hybrid": seed_dir / "hybrid_logs" / "hybrid_test_metrics.json",
         "hybrid_textonly": seed_dir / "hybrid_textonly_logs" / "hybrid_test_metrics.json",
+        "hybrid_leaky": seed_dir / "hybrid_leaky_logs" / "hybrid_test_metrics.json",
     }
     for model_name, path in metric_paths.items():
         if path.exists():
@@ -394,6 +422,14 @@ for seed in SEEDS:
             [sys.executable, "scripts/train_hybrid.py"],
             env=env,
         )
+    if RUN_HYBRID_LEAKY:
+        prepare_hybrid_leaky_config()
+        env = {**os.environ, "HYBRID_CONFIG": "config/hybrid_leaky.yaml"}
+        stage_times[f"seed_{seed}_hybrid_leaky"] = run_stage(
+            f"[seed {seed}] Hybrid leaky (prior-art credibility)",
+            [sys.executable, "scripts/train_hybrid.py"],
+            env=env,
+        )
 
     SEED_RESULTS[seed] = snapshot_seed(seed)
 
@@ -432,6 +468,7 @@ SUMMARY_FILES = {
     "transformer": primary_dir / "transformer_logs" / "transformer_test_metrics.json",
     "hybrid": primary_dir / "hybrid_logs" / "hybrid_test_metrics.json",
     "hybrid_textonly": primary_dir / "hybrid_textonly_logs" / "hybrid_test_metrics.json",
+    "hybrid_leaky": primary_dir / "hybrid_leaky_logs" / "hybrid_test_metrics.json",
 }
 
 summary = {
@@ -473,6 +510,7 @@ for seed in SEEDS:
         "transformer": seed_dir / "transformer_logs" / "transformer_test_metrics.json",
         "hybrid": seed_dir / "hybrid_logs" / "hybrid_test_metrics.json",
         "hybrid_textonly": seed_dir / "hybrid_textonly_logs" / "hybrid_test_metrics.json",
+        "hybrid_leaky": seed_dir / "hybrid_leaky_logs" / "hybrid_test_metrics.json",
     }
     for model_name, path in deep_paths.items():
         if path.exists():
@@ -566,12 +604,17 @@ DL_MODELS = {
     \"hybrid\": {
         \"log\":     \"reports/hybrid_logs/training_log.csv\",
         \"metrics\": \"reports/hybrid_logs/hybrid_test_metrics.json\",
-        \"pretty\":  \"Hybrid (text + metadata)\",
+        \"pretty\":  \"Hybrid (text + metadata, leakage-corrected)\",
     },
     \"hybrid_textonly\": {
         \"log\":     \"reports/hybrid_textonly_logs/training_log.csv\",
         \"metrics\": \"reports/hybrid_textonly_logs/hybrid_test_metrics.json\",
         \"pretty\":  \"Hybrid (text-only ablation)\",
+    },
+    \"hybrid_leaky\": {
+        \"log\":     \"reports/hybrid_leaky_logs/training_log.csv\",
+        \"metrics\": \"reports/hybrid_leaky_logs/hybrid_test_metrics.json\",
+        \"pretty\":  \"Hybrid (leaky / prior-art comparison)\",
     },
 }
 
@@ -836,12 +879,14 @@ archive_inputs = [
     \"reports/transformer_logs\",
     \"reports/hybrid_logs\",
     \"reports/hybrid_textonly_logs\",
+    \"reports/hybrid_leaky_logs\",
     \"reports/predictions\",
-    \"reports/seed_42\",
-    \"reports/seed_13\",
-    \"reports/seed_7\",
     \"reports/figures_all\",
 ]
+# Dynamic per-seed snapshot directories so changing SEEDS in cell 0 keeps the
+# archive in sync (the previous static list silently dropped seeds when the
+# canonical SEEDS were updated).
+archive_inputs.extend(f\"reports/seed_{seed}\" for seed in SEEDS)
 existing_inputs = [item for item in archive_inputs if (repo / item).exists()]
 missing_inputs = [item for item in archive_inputs if not (repo / item).exists()]
 

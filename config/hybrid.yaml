@@ -7,6 +7,10 @@
 #   trained from scratch and can tolerate a larger step.
 # - `use_metadata: true` trains the full hybrid; flip to false to reproduce
 #   the text-only RoBERTa ablation through the exact same code path.
+# - `metadata.leakage_corrected: true` uses credibility counts with the row's
+#   own verdict removed, which is the defensible default for thesis numbers.
+#   Set to false (or run `make hybrid-leaky`) to reproduce the prior-art
+#   leaky setup for comparison.
 
 model:
   name: roberta-base
@@ -15,7 +19,9 @@ model:
   hidden_dropout_prob: 0.2
   attention_probs_dropout_prob: 0.2
   use_metadata: true
-  metadata_output_dim: 64
+  # Metadata vector bumped from 64 → 128 so the metadata branch carries more
+  # weight relative to the 768-d [CLS] embedding when the two are concatenated.
+  metadata_output_dim: 128
   metadata_embedding_dim: 16
   fusion_hidden_dim: 128
   fusion_dropout: 0.2
@@ -28,7 +34,19 @@ metadata:
     - state
     - subject
     - context
-  num_buckets: 256
+  # Per-field hash buckets. `speaker` has ~3000 unique values on LIAR train,
+  # so 256 buckets would average ~12 collisions per bucket exactly on the
+  # most predictive field; 4096 brings the speaker collision rate close to 1.
+  # Low-cardinality fields (`party`, `state`) keep small bucket counts to
+  # avoid wasted embedding rows.
+  num_buckets:
+    speaker: 4096
+    party: 64
+    job: 1024
+    state: 256
+    subject: 1024
+    context: 1024
+  leakage_corrected: true
 
 training:
   batch_size: 16
@@ -45,7 +63,21 @@ training:
   label_smoothing: 0.05
   log_every_steps: 100
   seed: 42
+  # Multi-seed reporting. Headline numbers are mean ± std over these seeds;
+  # set to a single-element list to reproduce a single deterministic run.
+  seeds:
+    - 42
+    - 1337
+    - 2024
   early_stopping_patience: 2
+  loss:
+    # `ordinal` blends weighted CE with squared Earth Mover's Distance (CDF
+    # difference) so misclassifications further down the truthfulness scale
+    # cost more than adjacent-class confusions. Set type to `ce` and
+    # `emd_weight: 0` to recover the previous behaviour.
+    type: ordinal
+    ce_weight: 1.0
+    emd_weight: 0.5
 
 runtime:
   device: auto

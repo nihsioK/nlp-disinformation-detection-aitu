@@ -36,38 +36,68 @@ hashed(speaker, party, job, state, subject,         │
 metadata branch Linear(109 -> 64, GELU, dropout) ───┘
 ```
 
-- **Feature hashing** for categorical fields (bucket size 256 per field,
-  deterministic blake2b + fixed salt) — avoids carrying any vocab, handles
-  unseen speakers at test time gracefully, and matches the bucket layout used
-  in the original LIAR paper's release-ready pipeline.
+- **Feature hashing** for categorical fields with **per-field bucket sizes**
+  (deterministic blake2b + fixed salt). The default layout assigns more
+  capacity to high-cardinality fields like `speaker` (4096 buckets, ~3 000
+  unique values) and less to near-binary fields like `party` (64 buckets).
+  Bucket sizes are declared via `metadata.num_buckets` in `config/hybrid.yaml`
+  and consumed by `MetadataSpec.field_bucket_sizes`.
 - **Scalar normalization** via hard-coded divisors derived from LIAR train
   statistics (no learned scaler to persist).
-- **Shared embedding table with per-field offsets** keeps parameters low
-  (256×6 buckets × 16d ≈ 25k params for the categorical part).
+- **Shared embedding table with per-field offsets** keeps parameters bounded
+  to `Σ buckets × 16d` (~120k params under the default per-field layout).
+- **Leakage-corrected credibility features**. When
+  `metadata.leakage_corrected: true`, the dense feature matrix is read from
+  `credibility_corrected_*` / `cred_*_corrected` columns whose counts have
+  the row's own verdict subtracted out. See "A note on LIAR metadata and
+  information leakage" below — this is the defensible thesis default.
+- **Metadata output dim 128** (was 64). Concatenated with the 768-d `[CLS]`
+  embedding the metadata signal now sits at ~14 % of the fused vector
+  instead of ~8 %.
 - **Two-LR optimizer**: encoder at 1e-5 (same as text-only), head & metadata
   branch at 5e-4 since they're trained from scratch.
 - **`use_metadata: false`** flips the identical module into the text-only
   ablation for RQ2.
+- **Ordinal-aware loss**. `training.loss.type: ordinal` blends weighted
+  cross-entropy with a squared Earth Mover's Distance term over the softmax
+  CDFs (Hou et al., 2017). Predicting `true` for a `pants-fire` statement
+  costs more than predicting `false`. Set `type: ce` to recover plain CE.
+- **Multi-seed reporting**. `training.seeds` accepts a list (default
+  `[42, 1337, 2024]`); the trainer runs the full loop for every seed and
+  writes both per-seed `*_test_metrics_seed{N}.json` artefacts and an
+  aggregate `*_test_metrics_multiseed.json` with mean ± std.
 
 ## How to run
 
 ```bash
-# Full hybrid
+# Full hybrid (leakage-corrected by default)
 make hybrid
 
 # Text-only ablation (for apples-to-apples RQ2 comparison)
 make hybrid-textonly
 
+# Prior-art comparison (credibility counts include the row's own verdict)
+make hybrid-leaky
+
 # Or directly with a custom config:
 HYBRID_CONFIG=config/my_variant.yaml python scripts/train_hybrid.py
 ```
 
-Outputs:
+Outputs (single-seed runs):
 
 - `reports/hybrid_logs/training_log.csv` — per-epoch metrics
 - `reports/hybrid_logs/hybrid_run_history.csv` — appended across runs
 - `reports/hybrid_logs/hybrid_test_metrics.json` — TEST-split metrics
 - `models/hybrid_liar/best_model.pt` — best-checkpoint weights
+
+Outputs (multi-seed runs, `training.seeds: [...]` with more than one entry):
+
+- `reports/hybrid_logs/training_log_seed{N}.csv` — per-seed per-epoch metrics
+- `reports/hybrid_logs/hybrid_test_metrics_seed{N}.json` — per-seed TEST metrics
+- `reports/hybrid_logs/hybrid_test_metrics_multiseed.json` — aggregate
+  mean ± std macro-F1 / accuracy / per-class F1 across all seeds
+- `reports/predictions/{model_name}_test_predictions_seed{N}.jsonl`
+- `models/hybrid_liar/best_model_seed{N}.pt`
 
 ## Design decisions worth noting in the thesis
 
