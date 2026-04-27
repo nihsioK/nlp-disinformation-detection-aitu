@@ -281,3 +281,11 @@ All final metrics in the thesis and paper are reported on the **TEST split (1 28
 - Replaced `PLAN.md` with a thesis roadmap that makes instrumentation the
   required Phase 0 before expensive Kaggle training.
 - Validated with local unit tests and notebook regeneration before the next Kaggle run.
+
+### [2026-04-25] — Kaggle results archive simplified
+
+- Removed the optional GitHub push flow from the Kaggle notebook generator.
+- Regenerated `notebooks/kaggle_training.ipynb` so the final output is one
+  required archive: `/kaggle/working/disinformation_results.zip`.
+- The archive now contains metrics, prediction JSONL files, per-seed snapshots,
+  logs, generated figures, and an `archive_manifest.json`.

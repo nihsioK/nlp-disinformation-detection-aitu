@@ -53,10 +53,8 @@ Kaggle GPU instance (T4 × 2 recommended).
    P100, run the optional **Cell 2b** below to reinstall a compatible PyTorch build (adds
    ~3–5 minutes).
 2. Settings → Internet → **On** (needed to clone GitHub + download `roberta-base`).
-3. Add a Kaggle Secret named `GH_PAT` (Add-ons → Secrets → Add Secret) containing a GitHub
-   Personal Access Token with `repo` scope — needed to push the JSON metrics back to the
-   repo. Skip this secret if you only want to view metrics in the notebook output.
-4. Run all cells.
+3. Run all cells.
+4. Download `/kaggle/working/disinformation_results.zip` from the Kaggle **Output** panel.
 
 **What this notebook does:**
 
@@ -66,9 +64,7 @@ Kaggle GPU instance (T4 × 2 recommended).
 - Collects metrics into `results_summary.json` and `multi_seed_summary.json`.
 - Saves per-example TEST prediction JSONL files for significance, calibration, leakage, and
   error analysis.
-- Commits and pushes metric JSON + prediction JSONL files back to the `main` branch.
-  Model weights (.pt, ~500 MB each) stay on Kaggle — download them manually from the session
-  output if you want local copies.
+- Builds one downloadable results archive: `/kaggle/working/disinformation_results.zip`.
 """
     ),
     md(
@@ -83,13 +79,6 @@ Edit these if you forked the repo or are experimenting with a different branch.
 GITHUB_USER = "nihsioK"
 REPO_NAME = "nlp-disinformation-detection-aitu"
 BRANCH = "main"  # change to a feature branch if you're iterating
-
-GIT_AUTHOR_NAME = "Daniyar Koishin"
-GIT_AUTHOR_EMAIL = "dandevko@gmail.com"
-
-# Commit the JSON test-metric files back to GitHub after training.
-# Requires a Kaggle Secret named GH_PAT with repo scope.
-PUSH_RESULTS_TO_GITHUB = True
 
 # Which stages to run. Flip to False to skip individual stages during debugging.
 RUN_BASELINE = True
@@ -536,79 +525,7 @@ print(json.dumps(multi_seed_payload, indent=2))
 """
     ),
     md(
-        """## 8. Push JSON metrics back to GitHub
-
-Optional but strongly recommended: commits the results files to the `main` branch so the
-numbers are captured in git and immediately available for the paper.
-
-Requires a Kaggle Secret called `GH_PAT` (Add-ons → Secrets) containing a GitHub Personal
-Access Token with `repo` scope. We never print the token.
-"""
-    ),
-    code(
-        """import subprocess, os
-
-if not PUSH_RESULTS_TO_GITHUB:
-    print("PUSH_RESULTS_TO_GITHUB=False — skipping.")
-else:
-    try:
-        from kaggle_secrets import UserSecretsClient
-        GH_PAT = UserSecretsClient().get_secret("GH_PAT")
-    except Exception as exc:
-        raise RuntimeError(
-            "Could not load Kaggle Secret 'GH_PAT'. Add it via Add-ons → Secrets, "
-            "or set PUSH_RESULTS_TO_GITHUB = False in the config cell."
-        ) from exc
-
-    # Configure git identity and the authenticated remote.
-    subprocess.run(["git", "config", "user.name", GIT_AUTHOR_NAME], cwd=REPO_DIR, check=True)
-    subprocess.run(["git", "config", "user.email", GIT_AUTHOR_EMAIL], cwd=REPO_DIR, check=True)
-
-    auth_remote = f"https://{GITHUB_USER}:{GH_PAT}@github.com/{GITHUB_USER}/{REPO_NAME}.git"
-    subprocess.run(["git", "remote", "set-url", "origin", auth_remote], cwd=REPO_DIR, check=True)
-
-    # Stage only the reproducibility artifacts, not model weights or CSV logs.
-    from pathlib import Path
-
-    reports_dir = Path(REPO_DIR) / "reports"
-    files = [
-        reports_dir / "results_summary.json",
-        reports_dir / "multi_seed_summary.json",
-        reports_dir / "baseline_detailed_metrics.json",
-    ]
-    files.extend(reports_dir.glob("*_logs/*_test_metrics.json"))
-    files.extend((reports_dir / "predictions").glob("*.jsonl"))
-    files.extend(reports_dir.glob("seed_*/**/*.json"))
-    files.extend(reports_dir.glob("seed_*/**/*.jsonl"))
-
-    for path in sorted({p for p in files if p.exists()}):
-        rel = path.relative_to(REPO_DIR)
-        subprocess.run(["git", "add", "-f", str(rel)], cwd=REPO_DIR, check=True)
-
-    diff = subprocess.run(
-        ["git", "diff", "--cached", "--stat"],
-        cwd=REPO_DIR,
-        capture_output=True,
-        text=True,
-    )
-    if not diff.stdout.strip():
-        print("No metric file changes to commit.")
-    else:
-        print(diff.stdout)
-        commit_msg = "chore(results): add Kaggle training run metrics"
-        subprocess.run(["git", "commit", "-m", commit_msg], cwd=REPO_DIR, check=True)
-        subprocess.run(["git", "push", "origin", f"HEAD:{BRANCH}"], cwd=REPO_DIR, check=True)
-        print("Pushed to", BRANCH)
-
-    # Scrub the token from the remote URL so it can't leak via the saved notebook state.
-    subprocess.run(
-        ["git", "remote", "set-url", "origin", f"https://github.com/{GITHUB_USER}/{REPO_NAME}.git"],
-        cwd=REPO_DIR,
-    )
-"""
-    ),
-    md(
-        """## 9. Generate dissertation figures
+        """## 8. Generate dissertation figures
 
 Produce a diverse set of publication-ready plots from the artefacts written above, without
 re-running training. For every deep model (transformer, hybrid, hybrid_textonly) we emit:
@@ -893,54 +810,74 @@ print(f\"Total files: {sum(1 for _ in FIG_ROOT.iterdir())}\")
 """
     ),
     md(
-        """## 10. Zip model checkpoints and figures for download
+        """## 9. Create one downloadable results archive
 
-Model weights (`models/*.pt`, ~500 MB each) and figure files are too large or too numerous to
-push to git. We zip both into `/kaggle/working/` so they show up as single downloadable
-artefacts in the right-hand **Output** panel.
+This writes one archive to the Kaggle **Output** panel:
+`/kaggle/working/disinformation_results.zip`.
+
+It contains the metrics, per-example prediction JSONL files, per-seed snapshots, training
+logs, and generated figures needed for thesis/paper analysis. Model checkpoints are not
+included because they are large and not needed for the statistical analysis artifacts.
 """
     ),
     code(
-        """import subprocess
+        """import json
+import subprocess
 from pathlib import Path
 
-subprocess.run(
-    [\"zip\", \"-r\", \"/kaggle/working/models.zip\", \"models/\"],
-    cwd=REPO_DIR, check=True,
-)
-print(\"Zipped checkpoints to /kaggle/working/models.zip\")
+repo = Path(REPO_DIR)
+reports_dir = repo / \"reports\"
+archive_path = Path(\"/kaggle/working/disinformation_results.zip\")
 
-figures_rel = \"reports/figures_all\"
-if (Path(REPO_DIR) / figures_rel).exists():
-    subprocess.run(
-        [\"zip\", \"-r\", \"/kaggle/working/figures.zip\", figures_rel],
-        cwd=REPO_DIR, check=True,
-    )
-    print(\"Zipped figures     to /kaggle/working/figures.zip\")
-else:
-    print(\"No figures directory found — skipped figures.zip\")
+archive_inputs = [
+    \"reports/baseline_detailed_metrics.json\",
+    \"reports/results_summary.json\",
+    \"reports/multi_seed_summary.json\",
+    \"reports/transformer_logs\",
+    \"reports/hybrid_logs\",
+    \"reports/hybrid_textonly_logs\",
+    \"reports/predictions\",
+    \"reports/seed_42\",
+    \"reports/seed_13\",
+    \"reports/seed_7\",
+    \"reports/figures_all\",
+]
+existing_inputs = [item for item in archive_inputs if (repo / item).exists()]
+missing_inputs = [item for item in archive_inputs if not (repo / item).exists()]
 
-# Also zip the per-model training logs + JSON metrics so the raw numbers travel with the plots.
-subprocess.run(
-    [\"zip\", \"-r\", \"/kaggle/working/reports.zip\",
-     \"reports/transformer_logs\", \"reports/hybrid_logs\",
-     \"reports/hybrid_textonly_logs\", \"reports/baseline_detailed_metrics.json\",
-     \"reports/results_summary.json\", \"reports/multi_seed_summary.json\",
-     \"reports/predictions\", \"reports/seed_42\", \"reports/seed_13\",
-     \"reports/seed_7\", \"reports/figures_all\"],
-    cwd=REPO_DIR,
-)
-print(\"Zipped reports     to /kaggle/working/reports.zip — download from the Output tab.\")
+manifest = {
+    \"archive\": str(archive_path),
+    \"included_paths\": existing_inputs,
+    \"missing_optional_paths\": missing_inputs,
+    \"model_checkpoints_included\": False,
+    \"note\": (
+        \"This archive contains thesis/paper result artifacts: metrics, prediction JSONL, \"
+        \"per-seed snapshots, logs, and figures. Model checkpoints are excluded to keep \"
+        \"the required download smaller.\"
+    ),
+}
+manifest_path = reports_dir / \"archive_manifest.json\"
+manifest_path.write_text(json.dumps(manifest, indent=2), encoding=\"utf-8\")
+existing_inputs.append(\"reports/archive_manifest.json\")
+
+if archive_path.exists():
+    archive_path.unlink()
+
+subprocess.run([\"zip\", \"-r\", str(archive_path), *existing_inputs], cwd=REPO_DIR, check=True)
+print(f\"Created one results archive: {archive_path}\")
+print(\"Download disinformation_results.zip from the Kaggle Output panel.\")
+if missing_inputs:
+    print(\"Skipped missing optional paths:\", missing_inputs)
 """
     ),
     md(
         """## Done
 
-- Training logs (per-epoch CSV, full console output) stayed on the Kaggle session.
-- Test-split JSON metrics, multi-seed summaries, and prediction JSONL files were pushed to
-  GitHub (`main` branch) for reproducible paper analysis.
-- Dissertation figures are under `reports/figures_all/` and bundled in `figures.zip`.
-- Model weights are available in the Output tab via `models.zip`.
+- Download `/kaggle/working/disinformation_results.zip` from the Kaggle Output panel.
+- The archive contains metrics, multi-seed summaries, TEST prediction JSONL files, per-seed
+  snapshots, training logs, and generated dissertation figures.
+- Model checkpoints remain in the Kaggle session under `models/`; they are intentionally not
+  part of the required results archive.
 """
     ),
 ]
