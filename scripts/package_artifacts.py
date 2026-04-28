@@ -95,7 +95,12 @@ def create_results_archive(
 ) -> dict[str, object]:
     """Create `disinformation_results.zip` and return its manifest payload."""
 
-    archive_inputs = build_results_archive_inputs(seeds=seeds, primary_seed=primary_seed)
+    archive_inputs = [
+        path
+        for path in build_results_archive_inputs(seeds=seeds, primary_seed=primary_seed)
+        if not path.endswith("/training_log.csv")
+    ]
+    archive_inputs.extend(_resolve_training_log_inputs(project_root, primary_seed))
     existing_inputs, missing_inputs = existing_and_missing_paths(project_root, archive_inputs)
 
     manifest = {
@@ -106,7 +111,7 @@ def create_results_archive(
         "note": (
             "This archive contains only thesis/paper artifacts: aggregate metrics, "
             "seed-scoped metrics, prediction JSONL files, bootstrap/leakage reports, "
-            "final figures, and primary-seed training logs for the training-curves figure. "
+            "final figures, and training logs for the training-curves figure. "
             "Model checkpoints, raw CSV run histories, and diagnostic figure galleries "
             "are excluded."
         ),
@@ -117,6 +122,22 @@ def create_results_archive(
     manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     write_zip(project_root, output_path, [*existing_inputs, "reports/archive_manifest.json"])
     return manifest
+
+
+def _resolve_training_log_inputs(project_root: Path, primary_seed: int) -> list[str]:
+    """Prefer seed-scoped logs, falling back to legacy top-level logs."""
+
+    paths = []
+    for log_dir in MODEL_LOG_DIRS:
+        seed_scoped = f"reports/seed_{primary_seed}/{log_dir}/training_log.csv"
+        legacy_top_level = f"reports/{log_dir}/training_log.csv"
+        if (project_root / seed_scoped).exists():
+            paths.append(seed_scoped)
+        elif (project_root / legacy_top_level).exists():
+            paths.append(legacy_top_level)
+        else:
+            paths.append(seed_scoped)
+    return paths
 
 
 def create_models_archive(project_root: Path, output_path: Path) -> bool:

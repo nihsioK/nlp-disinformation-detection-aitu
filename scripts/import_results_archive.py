@@ -10,14 +10,18 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 ALLOWED_PREFIXES = ("reports/", "figures/")
+SKIPPED_PREFIXES = (
+    "reports/figures_all/",
+    "reports/paper/",
+    "reports/task1_task3/",
+)
 REQUIRED_PATHS = (
     "reports/results_summary.json",
     "reports/multi_seed_summary.json",
-    "reports/bootstrap_ci.json",
-    "reports/leakage_verification.json",
-    "figures/per_class_f1_grouped.pdf",
-    "figures/confusion_matrices.pdf",
-    "figures/training_curves.pdf",
+    "reports/seed_42/transformer_logs/transformer_test_metrics.json",
+    "reports/seed_42/hybrid_logs/hybrid_test_metrics.json",
+    "reports/seed_42/hybrid_leaky_logs/hybrid_test_metrics.json",
+    "reports/seed_42/predictions/transformer_test_predictions.jsonl",
 )
 
 
@@ -46,12 +50,19 @@ def validate_archive_member(name: str) -> Path:
 
 
 def import_results_archive(archive_path: Path, project_root: Path = PROJECT_ROOT) -> list[Path]:
-    """Extract allowed result artifacts and validate required files."""
+    """Extract allowed result artifacts and validate required files.
+
+    Legacy Kaggle archives included a broad `reports/figures_all/` diagnostic
+    gallery. Those files are intentionally skipped; final paper figures are
+    regenerated locally from the imported metrics and predictions.
+    """
 
     extracted: list[Path] = []
     with zipfile.ZipFile(archive_path) as archive:
         for info in archive.infolist():
             if info.is_dir():
+                continue
+            if info.filename.startswith(SKIPPED_PREFIXES):
                 continue
             relative_path = validate_archive_member(info.filename)
             destination = project_root / relative_path

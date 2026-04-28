@@ -78,6 +78,28 @@ def test_create_models_archive_is_separate(tmp_path: Path) -> None:
         assert "models/hybrid/best_model.pt" in archive.namelist()
 
 
+def test_create_results_archive_uses_legacy_training_log_fallback(tmp_path: Path) -> None:
+    """Legacy top-level training logs should be included when seed logs are absent."""
+
+    _populate_results_inputs(tmp_path)
+    for log_dir in (
+        "transformer_logs",
+        "hybrid_logs",
+        "hybrid_textonly_logs",
+        "hybrid_leaky_logs",
+    ):
+        seed_log = tmp_path / "reports" / "seed_42" / log_dir / "training_log.csv"
+        seed_log.unlink()
+        _write(tmp_path / "reports" / log_dir / "training_log.csv", "epoch,train_loss\n")
+    output_path = tmp_path / "disinformation_results.zip"
+
+    manifest = create_results_archive(tmp_path, output_path)
+
+    assert not manifest["missing_optional_paths"]
+    with zipfile.ZipFile(output_path) as archive:
+        assert "reports/transformer_logs/training_log.csv" in archive.namelist()
+
+
 def test_import_results_archive_rejects_unsafe_paths() -> None:
     """Zip members must stay under the allowed reports/ and figures/ prefixes."""
 
@@ -94,20 +116,22 @@ def test_import_results_archive_extracts_allowed_files(tmp_path: Path) -> None:
     required = [
         "reports/results_summary.json",
         "reports/multi_seed_summary.json",
-        "reports/bootstrap_ci.json",
-        "reports/leakage_verification.json",
-        "figures/per_class_f1_grouped.pdf",
-        "figures/confusion_matrices.pdf",
-        "figures/training_curves.pdf",
+        "reports/seed_42/transformer_logs/transformer_test_metrics.json",
+        "reports/seed_42/hybrid_logs/hybrid_test_metrics.json",
+        "reports/seed_42/hybrid_leaky_logs/hybrid_test_metrics.json",
+        "reports/seed_42/predictions/transformer_test_predictions.jsonl",
     ]
     with zipfile.ZipFile(archive_path, "w") as archive:
         for rel_path in required:
             archive.writestr(rel_path, "x")
+        archive.writestr("reports/figures_all/old_diagnostic.pdf", "old")
+        archive.writestr("figures/per_class_f1_grouped.pdf", "figure")
 
     extracted = import_results_archive(archive_path, tmp_path)
 
-    assert len(extracted) == len(required)
-    assert (tmp_path / "figures" / "training_curves.pdf").exists()
+    assert len(extracted) == len(required) + 1
+    assert (tmp_path / "figures" / "per_class_f1_grouped.pdf").exists()
+    assert not (tmp_path / "reports" / "figures_all" / "old_diagnostic.pdf").exists()
 
 
 def test_create_overleaf_package_contains_minimal_sources(tmp_path: Path) -> None:
