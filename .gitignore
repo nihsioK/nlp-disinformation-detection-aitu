@@ -1,5 +1,6 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
+*.pyc
 *.py[codz]
 *$py.class
 
@@ -77,6 +78,7 @@ target/
 
 # Jupyter Notebook
 .ipynb_checkpoints
+.ipynb_checkpoints/
 
 # IPython
 profile_default/
@@ -147,6 +149,20 @@ venv.bak/
 # Generated training artifacts
 data/
 models/
+wandb/
+mlruns/
+
+# Local agent/editor state
+.claude/
+
+# Local Kaggle exports
+kaggle/
+kaggle_output/
+kaggle-working/
+disinformation_results.zip
+models.zip
+overleaf_submission.zip
+tmp/
 
 # Spyder project settings
 .spyderproject
@@ -214,20 +230,50 @@ data/
 .DS_Store
 *.lock
 
+# LaTeX / paper build outputs
 *.pdf
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.lof
+*.lot
+*.nav
+*.out
+*.run.xml
+*.snm
+*.synctex.gz
+*.toc
+*.vrb
+*.xdv
+paper_figures/
+
+!/figures/
+/figures/*
+!/figures/per_class_f1_grouped.pdf
+!/figures/per_class_f1_grouped.png
+!/figures/confusion_matrices.pdf
+!/figures/confusion_matrices.png
+!/figures/training_curves.pdf
+!/figures/training_curves.png
 
 # reports/ contains large binary artifacts (figures PNGs, CSV training histories,
 # .pt checkpoints) that should stay out of git. We allow ONLY the JSON metric
 # summaries so final test numbers can be committed alongside the paper.
 /reports/*
 !/reports/__init__.py
-!/reports/paper/
 !/reports/*_logs/
 /reports/*_logs/*
 !/reports/*_logs/*.json
 !/reports/results_summary.json
 !/reports/multi_seed_summary.json
 !/reports/baseline_detailed_metrics.json
+!/reports/bootstrap_ci.json
+!/reports/bootstrap_ci_table.md
+!/reports/leakage_verification.json
+!/reports/leakage_verification_predictions.json
 !/reports/predictions/
 /reports/predictions/*
 !/reports/predictions/*.jsonl

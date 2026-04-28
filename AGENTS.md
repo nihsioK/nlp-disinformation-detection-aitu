@@ -31,6 +31,8 @@ nlp-disinformation-detection-aitu/
 ├── README.md                          ← human-facing quick start
 ├── Makefile                           ← make install / download / preprocess / baseline / transformer / hybrid / test
 ├── pyproject.toml                     ← dependencies (Python 3.12, optional groups: ml, viz, dev)
+├── main.tex                           ← paper source for Overleaf / Tectonic
+├── references.bib                     ← paper bibliography
 ├── .python-version                    ← 3.12
 ├── .gitignore                         ← excludes data/, models/, reports/figures/, .venv, caches
 │
@@ -47,7 +49,9 @@ nlp-disinformation-detection-aitu/
 ├── models/                            ← GITIGNORED. Training writes checkpoints here.
 │
 ├── notebooks/
-│   └── 01_eda_liar.ipynb              ← EDA: label dist, length hist, VADER sentiment, top speakers/subjects
+│   ├── 01_eda_liar.ipynb              ← EDA: label dist, length hist, VADER sentiment, top speakers/subjects
+│   ├── training.ipynb                 ← clean remote GPU training notebook
+│   └── _build_training_notebook.py    ← generator for training.ipynb
 │
 ├── reports/
 │   ├── __init__.py                    ← marker for pytest discovery
@@ -60,7 +64,15 @@ nlp-disinformation-detection-aitu/
 │   ├── preprocess.py                  ← builds statement_clean / statement_transformer / credibility features
 │   ├── train_baseline.py              ← TF-IDF + NB / SVM / RF baselines
 │   ├── train_transformer.py           ← text-only RoBERTa
-│   └── train_hybrid.py                ← hybrid (text + metadata), also supports text-only ablation via config
+│   ├── train_hybrid.py                ← hybrid (text + metadata), also supports text-only ablation via config
+│   ├── verify_leakage.py              ← leakage verification reports
+│   ├── bootstrap_ci.py                ← bootstrap confidence intervals
+│   ├── package_artifacts.py           ← Kaggle results.zip / models.zip packager
+│   ├── import_results_archive.py      ← local importer for disinformation_results.zip
+│   ├── package_overleaf.py            ← Overleaf zip packager
+│   ├── plot_per_class_f1.py           ← paper per-class F1 figure
+│   ├── plot_confusion_matrices.py     ← paper confusion-matrix figure
+│   └── plot_training_curves.py        ← paper training-curves figure
 │
 ├── src/disinfo_detection/             ← core importable package
 │   ├── data_loader.py                 ← load_liar(split), get_splits(), label maps
@@ -74,7 +86,8 @@ nlp-disinformation-detection-aitu/
 │
 ├── docs/
 │   ├── TRAINING_IMPROVEMENTS.md       ← rationale for preprocessing + transformer tuning changes
-│   └── HYBRID_MODEL.md                ← architecture and design decisions for the hybrid model
+│   ├── HYBRID_MODEL.md                ← architecture and design decisions for the hybrid model
+│   └── KAGGLE_TRAINING.md             ← clean remote GPU training guide
 │
 └── tests/                             ← pytest suite (16/16 green on main)
     ├── test_preprocessing.py
@@ -285,7 +298,7 @@ All final metrics in the thesis and paper are reported on the **TEST split (1 28
 ### [2026-04-25] — Kaggle results archive simplified
 
 - Removed the optional GitHub push flow from the Kaggle notebook generator.
-- Regenerated `notebooks/kaggle_training.ipynb` so the final output is one
+- Regenerated the remote training notebook so the final output is one
   required archive: `/kaggle/working/disinformation_results.zip`.
 - The archive now contains metrics, prediction JSONL files, per-seed snapshots,
   logs, generated figures, and an `archive_manifest.json`.
@@ -311,9 +324,85 @@ All final metrics in the thesis and paper are reported on the **TEST split (1 28
   training scripts; per-seed JSON / JSONL / checkpoint artefacts are written
   with a `_seed{N}` suffix and an aggregate `*_test_metrics_multiseed.json`
   reports mean ± std macro-F1 / accuracy / per-class F1.
-- `notebooks/_build_kaggle_notebook.py::configure_seed` collapses the YAML
+- `notebooks/_build_training_notebook.py::configure_seed` collapses the YAML
   `seeds` list to a single-element list per outer-loop seed, so the Kaggle
   outer loop continues to drive deterministic single-seed snapshots.
 - Tests: 34/34 green (was 16/16). New coverage for corrected credibility
   columns, per-field bucket layout, EMD/ordinal loss properties, and seed
   aggregation.
+
+### [2026-04-28] — Bootstrap confidence intervals added
+
+- Added `scripts/bootstrap_ci.py` to compute 10000-resample bootstrap CIs for
+  all 7 systems x 3 seeds and paired bootstrap differences for the planned
+  hybrid/text-only/leaky comparisons.
+- Added `reports/bootstrap_ci.json` and `reports/bootstrap_ci_table.md` with
+  seed-averaged macro-F1 / accuracy intervals for paper tables.
+- Added `make bootstrap-ci`, `tests/test_bootstrap_ci.py`, and `.gitignore`
+  exceptions for the two bootstrap report artifacts; validated with
+  `make bootstrap-ci` and `make test` (44/44 green).
+
+### [2026-04-28] — Long et al. 2017 citation corrected
+
+- Added `long2017fakenews` to `references.bib` and changed the Long et al.
+  citations in Related Work, Table I, and Discussion from `shu2017` to the new
+  source.
+- Compiled `main.tex` with Tectonic; BibTeX finished cleanly and the rendered
+  bibliography shows the Long et al. IJCNLP short-paper entry with the ACL
+  Anthology URL.
+
+### [2026-04-28] — Grouped per-class F1 figure added
+
+- Added `scripts/plot_per_class_f1.py` to aggregate per-class F1 over seeds
+  42, 1337, and 2024 for RoBERTa text-only, leakage-corrected hybrid, and
+  leaky hybrid.
+- Generated `figures/per_class_f1_grouped.pdf` and `.png`, replaced the old
+  three-panel per-class Figure 2 block in `main.tex`, and added `make figures`.
+- Validated the rendered PDF page with Poppler and ran `make test` (47/47
+  green).
+
+### [2026-04-28] — Side-by-side confusion matrices added
+
+- Added `scripts/plot_confusion_matrices.py` to average leaky and
+  leakage-corrected confusion matrices across seeds, row-normalise them, and
+  render side-by-side annotated heatmaps.
+- Generated `figures/confusion_matrices.pdf` and `.png`, replaced the old
+  stacked seed-42 confusion-matrix figure in `main.tex`, and extended
+  `make figures`.
+- Validated the rendered PDF page with Poppler and ran `make test` (51/51
+  green).
+
+### [2026-04-28] — Paper finalisation and repository hygiene
+
+- Removed the old horizontal macro-F1 figure from `main.tex`, added bootstrap
+  confidence intervals to Table I, and verified final figure numbering as
+  Fig. 1--3 with no unresolved PDF references.
+- Applied the requested abstract, leakage, EMD, discussion, and limitations
+  text edits; installed and ran `aspell --mode=tex` for manual typo review.
+- Updated `README.md`, added `CITATION.cff`, tightened `.gitignore`, and
+  verified `make figures`, `make test` (51/51 green), and Tectonic compilation.
+
+### [2026-04-28] — Gitignore paper artifacts tightened
+
+- Reviewed untracked and ignored repository outputs after paper/report generation.
+- Added explicit ignore coverage for `paper_figures/` and common LaTeX auxiliary
+  outputs while preserving committed paper figures under `figures/`.
+
+### [2026-04-28] — Training notebook and artifact cleanup
+
+- Renamed the remote GPU notebook to `notebooks/training.ipynb` and its generator
+  to `notebooks/_build_training_notebook.py`.
+- Replaced the old `reports/figures_all/` diagnostic gallery generation with
+  only the paper artifacts: leakage reports, bootstrap CIs, and three final
+  figure pairs under `figures/`.
+- Added `scripts/plot_training_curves.py`, updated `make figures`, and removed
+  stale local build/archive clutter from the working tree.
+
+### [2026-04-28] — Reproducible Kaggle-to-Overleaf workflow added
+
+- Renamed the manuscript source to `main.tex` for Overleaf compatibility.
+- Added `scripts/package_artifacts.py` so Kaggle writes a minimal
+  `disinformation_results.zip` and a separate optional `models.zip`.
+- Added `scripts/import_results_archive.py` and `scripts/package_overleaf.py`
+  plus `make import-results`, `make package-results-with-models`, and
+  `make package-overleaf` for the local archive-to-paper workflow.

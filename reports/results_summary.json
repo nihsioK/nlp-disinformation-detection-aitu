@@ -1,0 +1,994 @@
+{
+  "_primary_seed": 42,
+  "_note": "Single-seed payloads for quick inspection; use multi_seed_summary.json for reported thesis/paper means.",
+  "baseline": {
+    "svm": {
+      "valid": {
+        "accuracy": 0.22975077881619937,
+        "macro_f1": 0.23160496390950838,
+        "per_class_f1": {
+          "pants-fire": 0.2545454545454545,
+          "false": 0.22090729783037474,
+          "barely-true": 0.1842696629213483,
+          "half-true": 0.23625254582484725,
+          "mostly-true": 0.25,
+          "true": 0.2436548223350254
+        },
+        "per_class_precision": {
+          "pants-fire": 0.22012578616352202,
+          "false": 0.22950819672131148,
+          "barely-true": 0.1971153846153846,
+          "half-true": 0.23868312757201646,
+          "mostly-true": 0.2780487804878049,
+          "true": 0.21333333333333335
+        },
+        "per_class_recall": {
+          "pants-fire": 0.3017241379310345,
+          "false": 0.21292775665399238,
+          "barely-true": 0.1729957805907173,
+          "half-true": 0.23387096774193547,
+          "mostly-true": 0.22709163346613545,
+          "true": 0.28402366863905326
+        },
+        "confusion_matrix": [
+          [
+            35,
+            21,
+            22,
+            17,
+            9,
+            12
+          ],
+          [
+            39,
+            56,
+            55,
+            36,
+            35,
+            42
+          ],
+          [
+            25,
+            53,
+            41,
+            53,
+            29,
+            36
+          ],
+          [
+            28,
+            49,
+            40,
+            58,
+            43,
+            30
+          ],
+          [
+            23,
+            35,
+            30,
+            49,
+            57,
+            57
+          ],
+          [
+            9,
+            30,
+            20,
+            30,
+            32,
+            48
+          ]
+        ],
+        "confusion_matrix_labels": [
+          "pants-fire",
+          "false",
+          "barely-true",
+          "half-true",
+          "mostly-true",
+          "true"
+        ]
+      },
+      "test": {
+        "accuracy": 0.23304754481683554,
+        "macro_f1": 0.22928094359472648,
+        "per_class_f1": {
+          "pants-fire": 0.1774193548387097,
+          "false": 0.2542372881355932,
+          "barely-true": 0.25821596244131456,
+          "half-true": 0.2286902286902287,
+          "mostly-true": 0.21730382293762576,
+          "true": 0.2398190045248869
+        },
+        "per_class_precision": {
+          "pants-fire": 0.14102564102564102,
+          "false": 0.2702702702702703,
+          "barely-true": 0.25943396226415094,
+          "half-true": 0.2570093457943925,
+          "mostly-true": 0.21774193548387097,
+          "true": 0.22943722943722944
+        },
+        "per_class_recall": {
+          "pants-fire": 0.2391304347826087,
+          "false": 0.24,
+          "barely-true": 0.2570093457943925,
+          "half-true": 0.20599250936329588,
+          "mostly-true": 0.21686746987951808,
+          "true": 0.25118483412322273
+        },
+        "confusion_matrix": [
+          [
+            22,
+            21,
+            13,
+            17,
+            10,
+            9
+          ],
+          [
+            38,
+            60,
+            33,
+            41,
+            39,
+            39
+          ],
+          [
+            27,
+            41,
+            55,
+            29,
+            29,
+            33
+          ],
+          [
+            27,
+            33,
+            48,
+            55,
+            63,
+            41
+          ],
+          [
+            21,
+            37,
+            41,
+            40,
+            54,
+            56
+          ],
+          [
+            21,
+            30,
+            22,
+            32,
+            53,
+            53
+          ]
+        ],
+        "confusion_matrix_labels": [
+          "pants-fire",
+          "false",
+          "barely-true",
+          "half-true",
+          "mostly-true",
+          "true"
+        ]
+      },
+      "vocab_size": 8476
+    },
+    "naive_bayes": {
+      "valid": {
+        "accuracy": 0.24143302180685358,
+        "macro_f1": 0.22522671625523952,
+        "per_class_f1": {
+          "pants-fire": 0.1527777777777778,
+          "false": 0.2817391304347826,
+          "barely-true": 0.1909307875894988,
+          "half-true": 0.24273504273504273,
+          "mostly-true": 0.29063097514340347,
+          "true": 0.19254658385093168
+        },
+        "per_class_precision": {
+          "pants-fire": 0.39285714285714285,
+          "false": 0.25961538461538464,
+          "barely-true": 0.21978021978021978,
+          "half-true": 0.21068249258160238,
+          "mostly-true": 0.27941176470588236,
+          "true": 0.20261437908496732
+        },
+        "per_class_recall": {
+          "pants-fire": 0.09482758620689655,
+          "false": 0.30798479087452474,
+          "barely-true": 0.16877637130801687,
+          "half-true": 0.2862903225806452,
+          "mostly-true": 0.30278884462151395,
+          "true": 0.1834319526627219
+        },
+        "confusion_matrix": [
+          [
+            11,
+            31,
+            24,
+            25,
+            14,
+            11
+          ],
+          [
+            3,
+            81,
+            50,
+            57,
+            40,
+            32
+          ],
+          [
+            3,
+            68,
+            40,
+            66,
+            37,
+            23
+          ],
+          [
+            4,
+            57,
+            32,
+            71,
+            63,
+            21
+          ],
+          [
+            5,
+            44,
+            24,
+            67,
+            76,
+            35
+          ],
+          [
+            2,
+            31,
+            12,
+            51,
+            42,
+            31
+          ]
+        ],
+        "confusion_matrix_labels": [
+          "pants-fire",
+          "false",
+          "barely-true",
+          "half-true",
+          "mostly-true",
+          "true"
+        ]
+      },
+      "test": {
+        "accuracy": 0.23070927513639908,
+        "macro_f1": 0.2001337425849742,
+        "per_class_f1": {
+          "pants-fire": 0.05309734513274336,
+          "false": 0.26501766784452296,
+          "barely-true": 0.17344173441734417,
+          "half-true": 0.28324697754749567,
+          "mostly-true": 0.254416961130742,
+          "true": 0.17158176943699732
+        },
+        "per_class_precision": {
+          "pants-fire": 0.14285714285714285,
+          "false": 0.23734177215189872,
+          "barely-true": 0.2064516129032258,
+          "half-true": 0.26282051282051283,
+          "mostly-true": 0.22712933753943218,
+          "true": 0.19753086419753085
+        },
+        "per_class_recall": {
+          "pants-fire": 0.03260869565217391,
+          "false": 0.3,
+          "barely-true": 0.14953271028037382,
+          "half-true": 0.30711610486891383,
+          "mostly-true": 0.2891566265060241,
+          "true": 0.15165876777251186
+        },
+        "confusion_matrix": [
+          [
+            3,
+            36,
+            18,
+            16,
+            12,
+            7
+          ],
+          [
+            7,
+            75,
+            29,
+            58,
+            50,
+            31
+          ],
+          [
+            2,
+            64,
+            32,
+            46,
+            44,
+            26
+          ],
+          [
+            4,
+            50,
+            33,
+            82,
+            72,
+            26
+          ],
+          [
+            2,
+            39,
+            29,
+            67,
+            72,
+            40
+          ],
+          [
+            3,
+            52,
+            14,
+            43,
+            67,
+            32
+          ]
+        ],
+        "confusion_matrix_labels": [
+          "pants-fire",
+          "false",
+          "barely-true",
+          "half-true",
+          "mostly-true",
+          "true"
+        ]
+      },
+      "vocab_size": 8476
+    },
+    "random_forest": {
+      "valid": {
+        "accuracy": 0.23909657320872274,
+        "macro_f1": 0.23731850251841613,
+        "per_class_f1": {
+          "pants-fire": 0.23963133640552994,
+          "false": 0.26247689463955637,
+          "barely-true": 0.20408163265306123,
+          "half-true": 0.20316027088036118,
+          "mostly-true": 0.2696629213483146,
+          "true": 0.24489795918367346
+        },
+        "per_class_precision": {
+          "pants-fire": 0.25742574257425743,
+          "false": 0.25539568345323743,
+          "barely-true": 0.22058823529411764,
+          "half-true": 0.23076923076923078,
+          "mostly-true": 0.254416961130742,
+          "true": 0.21524663677130046
+        },
+        "per_class_recall": {
+          "pants-fire": 0.22413793103448276,
+          "false": 0.26996197718631176,
+          "barely-true": 0.189873417721519,
+          "half-true": 0.1814516129032258,
+          "mostly-true": 0.2868525896414343,
+          "true": 0.28402366863905326
+        },
+        "confusion_matrix": [
+          [
+            26,
+            32,
+            25,
+            14,
+            8,
+            11
+          ],
+          [
+            24,
+            71,
+            50,
+            37,
+            42,
+            39
+          ],
+          [
+            18,
+            56,
+            45,
+            31,
+            53,
+            34
+          ],
+          [
+            19,
+            55,
+            36,
+            45,
+            60,
+            33
+          ],
+          [
+            11,
+            42,
+            30,
+            38,
+            72,
+            58
+          ],
+          [
+            3,
+            22,
+            18,
+            30,
+            48,
+            48
+          ]
+        ],
+        "confusion_matrix_labels": [
+          "pants-fire",
+          "false",
+          "barely-true",
+          "half-true",
+          "mostly-true",
+          "true"
+        ]
+      },
+      "test": {
+        "accuracy": 0.23460639127045985,
+        "macro_f1": 0.2281554034105101,
+        "per_class_f1": {
+          "pants-fire": 0.18604651162790697,
+          "false": 0.24521072796934865,
+          "barely-true": 0.23095823095823095,
+          "half-true": 0.2184873949579832,
+          "mostly-true": 0.26287744227353466,
+          "true": 0.22535211267605634
+        },
+        "per_class_precision": {
+          "pants-fire": 0.2,
+          "false": 0.23529411764705882,
+          "barely-true": 0.24352331606217617,
+          "half-true": 0.24880382775119617,
+          "mostly-true": 0.2356687898089172,
+          "true": 0.22325581395348837
+        },
+        "per_class_recall": {
+          "pants-fire": 0.17391304347826086,
+          "false": 0.256,
+          "barely-true": 0.21962616822429906,
+          "half-true": 0.1947565543071161,
+          "mostly-true": 0.2971887550200803,
+          "true": 0.22748815165876776
+        },
+        "confusion_matrix": [
+          [
+            16,
+            15,
+            22,
+            14,
+            14,
+            11
+          ],
+          [
+            18,
+            64,
+            42,
+            33,
+            53,
+            40
+          ],
+          [
+            11,
+            51,
+            47,
+            38,
+            41,
+            26
+          ],
+          [
+            20,
+            51,
+            34,
+            52,
+            69,
+            41
+          ],
+          [
+            6,
+            43,
+            32,
+            45,
+            74,
+            49
+          ],
+          [
+            9,
+            48,
+            16,
+            27,
+            63,
+            48
+          ]
+        ],
+        "confusion_matrix_labels": [
+          "pants-fire",
+          "false",
+          "barely-true",
+          "half-true",
+          "mostly-true",
+          "true"
+        ]
+      },
+      "vocab_size": 8476
+    },
+    "_environment": {
+      "git_sha": "eb644954344e99b3a11b1491e3392f168a669556",
+      "python_version": "3.12.12",
+      "python_executable": "/usr/bin/python3",
+      "torch_version": "2.10.0+cu128",
+      "transformers_version": "5.0.0",
+      "device": "cpu",
+      "seed": 42,
+      "run_timestamp": "2026-04-27T06:01:50.703665+00:00"
+    }
+  },
+  "transformer": {
+    "best_val_macro_f1": 0.27631310950309135,
+    "test_accuracy": 0.2798129384255651,
+    "test_macro_f1": 0.2809555046255405,
+    "test_per_class_f1": {
+      "pants-fire": 0.3253012048192771,
+      "false": 0.30406852248394006,
+      "barely-true": 0.21714285714285714,
+      "half-true": 0.264,
+      "mostly-true": 0.26778242677824265,
+      "true": 0.3074380165289256
+    },
+    "test_per_class_precision": {
+      "pants-fire": 0.36486486486486486,
+      "false": 0.3271889400921659,
+      "barely-true": 0.27941176470588236,
+      "half-true": 0.2832618025751073,
+      "mostly-true": 0.2794759825327511,
+      "true": 0.23604060913705585
+    },
+    "test_per_class_recall": {
+      "pants-fire": 0.29347826086956524,
+      "false": 0.284,
+      "barely-true": 0.17757009345794392,
+      "half-true": 0.24719101123595505,
+      "mostly-true": 0.2570281124497992,
+      "true": 0.44075829383886256
+    },
+    "test_confusion_matrix": [
+      [
+        27,
+        23,
+        14,
+        9,
+        7,
+        12
+      ],
+      [
+        12,
+        71,
+        36,
+        32,
+        33,
+        66
+      ],
+      [
+        14,
+        35,
+        38,
+        46,
+        37,
+        44
+      ],
+      [
+        14,
+        38,
+        30,
+        66,
+        37,
+        82
+      ],
+      [
+        3,
+        23,
+        14,
+        48,
+        64,
+        97
+      ],
+      [
+        4,
+        27,
+        4,
+        32,
+        51,
+        93
+      ]
+    ],
+    "test_confusion_matrix_labels": [
+      "pants-fire",
+      "false",
+      "barely-true",
+      "half-true",
+      "mostly-true",
+      "true"
+    ],
+    "loss_config": {
+      "type": "ordinal",
+      "ce_weight": 1.0,
+      "emd_weight": 0.5
+    },
+    "seed": 42,
+    "run_timestamp": "2026-04-27T06:02:38.057302+00:00",
+    "device": "cuda",
+    "environment": {
+      "git_sha": "eb644954344e99b3a11b1491e3392f168a669556",
+      "python_version": "3.12.12",
+      "python_executable": "/usr/bin/python3",
+      "torch_version": "2.10.0+cu128",
+      "transformers_version": "5.0.0",
+      "device": "cuda",
+      "seed": 42,
+      "run_timestamp": "2026-04-27T06:02:38.057302+00:00"
+    }
+  },
+  "hybrid": {
+    "best_val_macro_f1": 0.3125175349978709,
+    "test_accuracy": 0.2790335151987529,
+    "test_macro_f1": 0.28362935405647666,
+    "test_per_class_f1": {
+      "pants-fire": 0.34,
+      "false": 0.24817518248175183,
+      "barely-true": 0.272,
+      "half-true": 0.23856858846918488,
+      "mostly-true": 0.32245681381957775,
+      "true": 0.2805755395683453
+    },
+    "test_per_class_precision": {
+      "pants-fire": 0.3148148148148148,
+      "false": 0.3167701863354037,
+      "barely-true": 0.3167701863354037,
+      "half-true": 0.2542372881355932,
+      "mostly-true": 0.3088235294117647,
+      "true": 0.22608695652173913
+    },
+    "test_per_class_recall": {
+      "pants-fire": 0.3695652173913043,
+      "false": 0.204,
+      "barely-true": 0.2383177570093458,
+      "half-true": 0.2247191011235955,
+      "mostly-true": 0.3373493975903614,
+      "true": 0.3696682464454976
+    },
+    "test_confusion_matrix": [
+      [
+        34,
+        14,
+        13,
+        9,
+        10,
+        12
+      ],
+      [
+        26,
+        51,
+        43,
+        42,
+        28,
+        60
+      ],
+      [
+        21,
+        27,
+        51,
+        36,
+        30,
+        49
+      ],
+      [
+        16,
+        31,
+        32,
+        60,
+        63,
+        65
+      ],
+      [
+        7,
+        13,
+        14,
+        50,
+        84,
+        81
+      ],
+      [
+        4,
+        25,
+        8,
+        39,
+        57,
+        78
+      ]
+    ],
+    "test_confusion_matrix_labels": [
+      "pants-fire",
+      "false",
+      "barely-true",
+      "half-true",
+      "mostly-true",
+      "true"
+    ],
+    "use_metadata": true,
+    "leakage_corrected": true,
+    "loss_config": {
+      "type": "ordinal",
+      "ce_weight": 1.0,
+      "emd_weight": 0.5
+    },
+    "field_bucket_sizes": {
+      "speaker": 4096,
+      "party": 64,
+      "job": 1024,
+      "state": 256,
+      "subject": 1024,
+      "context": 1024
+    },
+    "metadata_output_dim": 128,
+    "seed": 42,
+    "run_timestamp": "2026-04-27T06:17:26.763791+00:00",
+    "device": "cuda",
+    "environment": {
+      "git_sha": "eb644954344e99b3a11b1491e3392f168a669556",
+      "python_version": "3.12.12",
+      "python_executable": "/usr/bin/python3",
+      "torch_version": "2.10.0+cu128",
+      "transformers_version": "5.0.0",
+      "device": "cuda",
+      "seed": 42,
+      "run_timestamp": "2026-04-27T06:17:26.763791+00:00"
+    }
+  },
+  "hybrid_textonly": {
+    "best_val_macro_f1": 0.29461945739646195,
+    "test_accuracy": 0.2883865939204988,
+    "test_macro_f1": 0.2964674995874553,
+    "test_per_class_f1": {
+      "pants-fire": 0.3870967741935484,
+      "false": 0.32388663967611336,
+      "barely-true": 0.2565597667638484,
+      "half-true": 0.22362869198312235,
+      "mostly-true": 0.2998102466793169,
+      "true": 0.2878228782287823
+    },
+    "test_per_class_precision": {
+      "pants-fire": 0.3829787234042553,
+      "false": 0.32786885245901637,
+      "barely-true": 0.34108527131782945,
+      "half-true": 0.2560386473429952,
+      "mostly-true": 0.2841726618705036,
+      "true": 0.23564954682779457
+    },
+    "test_per_class_recall": {
+      "pants-fire": 0.391304347826087,
+      "false": 0.32,
+      "barely-true": 0.205607476635514,
+      "half-true": 0.19850187265917604,
+      "mostly-true": 0.3172690763052209,
+      "true": 0.3696682464454976
+    },
+    "test_confusion_matrix": [
+      [
+        36,
+        15,
+        7,
+        7,
+        15,
+        12
+      ],
+      [
+        19,
+        80,
+        26,
+        35,
+        36,
+        54
+      ],
+      [
+        15,
+        41,
+        44,
+        37,
+        34,
+        43
+      ],
+      [
+        13,
+        47,
+        31,
+        53,
+        56,
+        67
+      ],
+      [
+        5,
+        26,
+        16,
+        46,
+        79,
+        77
+      ],
+      [
+        6,
+        35,
+        5,
+        29,
+        58,
+        78
+      ]
+    ],
+    "test_confusion_matrix_labels": [
+      "pants-fire",
+      "false",
+      "barely-true",
+      "half-true",
+      "mostly-true",
+      "true"
+    ],
+    "use_metadata": false,
+    "leakage_corrected": true,
+    "loss_config": {
+      "type": "ordinal",
+      "ce_weight": 1.0,
+      "emd_weight": 0.5
+    },
+    "field_bucket_sizes": {
+      "speaker": 4096,
+      "party": 64,
+      "job": 1024,
+      "state": 256,
+      "subject": 1024,
+      "context": 1024
+    },
+    "metadata_output_dim": 128,
+    "seed": 42,
+    "run_timestamp": "2026-04-27T06:42:52.047103+00:00",
+    "device": "cuda",
+    "environment": {
+      "git_sha": "eb644954344e99b3a11b1491e3392f168a669556",
+      "python_version": "3.12.12",
+      "python_executable": "/usr/bin/python3",
+      "torch_version": "2.10.0+cu128",
+      "transformers_version": "5.0.0",
+      "device": "cuda",
+      "seed": 42,
+      "run_timestamp": "2026-04-27T06:42:52.047103+00:00"
+    }
+  },
+  "hybrid_leaky": {
+    "best_val_macro_f1": 0.4783228629883389,
+    "test_accuracy": 0.4177708495713172,
+    "test_macro_f1": 0.44077832264754635,
+    "test_per_class_f1": {
+      "pants-fire": 0.6077348066298343,
+      "false": 0.4482758620689655,
+      "barely-true": 0.4228855721393035,
+      "half-true": 0.39737991266375544,
+      "mostly-true": 0.43333333333333335,
+      "true": 0.33506044905008636
+    },
+    "test_per_class_precision": {
+      "pants-fire": 0.6179775280898876,
+      "false": 0.5833333333333334,
+      "barely-true": 0.4521276595744681,
+      "half-true": 0.47643979057591623,
+      "mostly-true": 0.4020618556701031,
+      "true": 0.26358695652173914
+    },
+    "test_per_class_recall": {
+      "pants-fire": 0.5978260869565217,
+      "false": 0.364,
+      "barely-true": 0.397196261682243,
+      "half-true": 0.3408239700374532,
+      "mostly-true": 0.46987951807228917,
+      "true": 0.4597156398104265
+    },
+    "test_confusion_matrix": [
+      [
+        55,
+        5,
+        8,
+        6,
+        3,
+        15
+      ],
+      [
+        14,
+        91,
+        36,
+        29,
+        19,
+        61
+      ],
+      [
+        9,
+        14,
+        85,
+        25,
+        35,
+        46
+      ],
+      [
+        3,
+        23,
+        26,
+        91,
+        54,
+        70
+      ],
+      [
+        2,
+        7,
+        18,
+        26,
+        117,
+        79
+      ],
+      [
+        6,
+        16,
+        15,
+        14,
+        63,
+        97
+      ]
+    ],
+    "test_confusion_matrix_labels": [
+      "pants-fire",
+      "false",
+      "barely-true",
+      "half-true",
+      "mostly-true",
+      "true"
+    ],
+    "use_metadata": true,
+    "leakage_corrected": false,
+    "loss_config": {
+      "type": "ordinal",
+      "ce_weight": 1.0,
+      "emd_weight": 0.5
+    },
+    "field_bucket_sizes": {
+      "speaker": 4096,
+      "party": 64,
+      "job": 1024,
+      "state": 256,
+      "subject": 1024,
+      "context": 1024
+    },
+    "metadata_output_dim": 128,
+    "seed": 42,
+    "run_timestamp": "2026-04-27T07:08:15.944727+00:00",
+    "device": "cuda",
+    "environment": {
+      "git_sha": "eb644954344e99b3a11b1491e3392f168a669556",
+      "python_version": "3.12.12",
+      "python_executable": "/usr/bin/python3",
+      "torch_version": "2.10.0+cu128",
+      "transformers_version": "5.0.0",
+      "device": "cuda",
+      "seed": 42,
+      "run_timestamp": "2026-04-27T07:08:15.944727+00:00"
+    }
+  }
+}

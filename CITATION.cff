@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+message: "If you use this code, please cite the following work."
+title: "A Leakage-Corrected Reassessment of Metadata Fusion for Six-Class Political Disinformation Detection on the LIAR Benchmark"
+authors:
+  - family-names: "Koishin"
+    given-names: "Daniyar"
+    affiliation: "Astana IT University"
+date-released: 2026-04-28
+url: "https://github.com/nihsioK/nlp-disinformation-detection-aitu"

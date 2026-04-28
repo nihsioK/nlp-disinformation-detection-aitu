@@ -1,0 +1,158 @@
+{
+  "seeds": [
+    42,
+    1337,
+    2024
+  ],
+  "primary_seed": 42,
+  "summary": [
+    {
+      "model": "baseline_naive_bayes",
+      "n_seeds": 3,
+      "test_macro_f1_mean": 0.2001337425849742,
+      "test_macro_f1_std": 0.0,
+      "test_accuracy_mean": 0.23070927513639908,
+      "test_accuracy_std": 0.0
+    },
+    {
+      "model": "baseline_random_forest",
+      "n_seeds": 3,
+      "test_macro_f1_mean": 0.23453398972690231,
+      "test_macro_f1_std": 0.006859727361417618,
+      "test_accuracy_mean": 0.23746427643543777,
+      "test_accuracy_std": 0.004292728407861338
+    },
+    {
+      "model": "baseline_svm",
+      "n_seeds": 3,
+      "test_macro_f1_mean": 0.22928094359472648,
+      "test_macro_f1_std": 0.0,
+      "test_accuracy_mean": 0.23304754481683554,
+      "test_accuracy_std": 0.0
+    },
+    {
+      "model": "hybrid",
+      "n_seeds": 3,
+      "test_macro_f1_mean": 0.2838955755872104,
+      "test_macro_f1_std": 0.0034956163400390737,
+      "test_accuracy_mean": 0.2842296700441673,
+      "test_accuracy_std": 0.009682850170737457
+    },
+    {
+      "model": "hybrid_leaky",
+      "n_seeds": 3,
+      "test_macro_f1_mean": 0.4359305382466154,
+      "test_macro_f1_std": 0.004312497036300377,
+      "test_accuracy_mean": 0.42036892699402445,
+      "test_accuracy_std": 0.0027372444148746995
+    },
+    {
+      "model": "hybrid_textonly",
+      "n_seeds": 3,
+      "test_macro_f1_mean": 0.2869202334538758,
+      "test_macro_f1_std": 0.008906119411829994,
+      "test_accuracy_mean": 0.2829306313328137,
+      "test_accuracy_std": 0.007516485394382648
+    },
+    {
+      "model": "transformer",
+      "n_seeds": 3,
+      "test_macro_f1_mean": 0.2852537476667018,
+      "test_macro_f1_std": 0.006705060249100446,
+      "test_accuracy_mean": 0.28474928552870876,
+      "test_accuracy_std": 0.005071244815781545
+    }
+  ],
+  "per_seed_metrics": {
+    "42": {
+      "baseline_svm": {
+        "test_macro_f1": 0.22928094359472648,
+        "test_accuracy": 0.23304754481683554
+      },
+      "baseline_naive_bayes": {
+        "test_macro_f1": 0.2001337425849742,
+        "test_accuracy": 0.23070927513639908
+      },
+      "baseline_random_forest": {
+        "test_macro_f1": 0.2281554034105101,
+        "test_accuracy": 0.23460639127045985
+      },
+      "transformer": {
+        "test_macro_f1": 0.2809555046255405,
+        "test_accuracy": 0.2798129384255651
+      },
+      "hybrid": {
+        "test_macro_f1": 0.28362935405647666,
+        "test_accuracy": 0.2790335151987529
+      },
+      "hybrid_textonly": {
+        "test_macro_f1": 0.2964674995874553,
+        "test_accuracy": 0.2883865939204988
+      },
+      "hybrid_leaky": {
+        "test_macro_f1": 0.44077832264754635,
+        "test_accuracy": 0.4177708495713172
+      }
+    },
+    "1337": {
+      "baseline_svm": {
+        "test_macro_f1": 0.22928094359472648,
+        "test_accuracy": 0.23304754481683554
+      },
+      "baseline_naive_bayes": {
+        "test_macro_f1": 0.2001337425849742,
+        "test_accuracy": 0.23070927513639908
+      },
+      "baseline_random_forest": {
+        "test_macro_f1": 0.24179035639392907,
+        "test_accuracy": 0.24240062353858144
+      },
+      "transformer": {
+        "test_macro_f1": 0.29297975568544593,
+        "test_accuracy": 0.2899454403741232
+      },
+      "hybrid": {
+        "test_macro_f1": 0.2875166912506786,
+        "test_accuracy": 0.2954014029618083
+      },
+      "hybrid_textonly": {
+        "test_macro_f1": 0.2788365784825166,
+        "test_accuracy": 0.27435697583788
+      },
+      "hybrid_leaky": {
+        "test_macro_f1": 0.4344924809662389,
+        "test_accuracy": 0.4232268121590023
+      }
+    },
+    "2024": {
+      "baseline_svm": {
+        "test_macro_f1": 0.22928094359472648,
+        "test_accuracy": 0.23304754481683554
+      },
+      "baseline_naive_bayes": {
+        "test_macro_f1": 0.2001337425849742,
+        "test_accuracy": 0.23070927513639908
+      },
+      "baseline_random_forest": {
+        "test_macro_f1": 0.23365620937626774,
+        "test_accuracy": 0.23538581449727203
+      },
+      "transformer": {
+        "test_macro_f1": 0.28182598268911896,
+        "test_accuracy": 0.284489477786438
+      },
+      "hybrid": {
+        "test_macro_f1": 0.280540681454476,
+        "test_accuracy": 0.2782540919719408
+      },
+      "hybrid_textonly": {
+        "test_macro_f1": 0.28545662229165547,
+        "test_accuracy": 0.2860483242400624
+      },
+      "hybrid_leaky": {
+        "test_macro_f1": 0.4325208111260608,
+        "test_accuracy": 0.4201091192517537
+      }
+    }
+  }
+}

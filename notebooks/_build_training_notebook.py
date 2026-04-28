@@ -1,8 +1,8 @@
-"""Build notebooks/kaggle_training.ipynb from a structured cell list.
+"""Build notebooks/training.ipynb from a structured cell list.
 
 Run from the repo root:
 
-    python notebooks/_build_kaggle_notebook.py
+    python notebooks/_build_training_notebook.py
 
 This keeps the notebook JSON auto-generated so reviewers can see the cell
 contents as plain Python strings during code review.
@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-OUT = HERE / "kaggle_training.ipynb"
+OUT = HERE / "training.ipynb"
 
 
 def md(text: str) -> dict:
@@ -38,7 +38,7 @@ def code(text: str) -> dict:
 
 CELLS: list[dict] = [
     md(
-        """# LIAR disinformation detection — Kaggle training notebook
+        """# LIAR disinformation detection — GPU training notebook
 
 This notebook runs the full multi-seed training pipeline (baseline → transformer → hybrid
 → hybrid-textonly) for the thesis project `nihsioK/nlp-disinformation-detection-aitu` on a
@@ -55,6 +55,7 @@ Kaggle GPU instance (T4 × 2 recommended).
 2. Settings → Internet → **On** (needed to clone GitHub + download `roberta-base`).
 3. Run all cells.
 4. Download `/kaggle/working/disinformation_results.zip` from the Kaggle **Output** panel.
+   If `CREATE_MODELS_ZIP = True`, download `/kaggle/working/models.zip` separately.
 
 **What this notebook does:**
 
@@ -67,7 +68,9 @@ Kaggle GPU instance (T4 × 2 recommended).
 - Collects metrics into `results_summary.json` and `multi_seed_summary.json`.
 - Saves per-example TEST prediction JSONL files for significance, calibration, leakage, and
   error analysis.
-- Builds one downloadable results archive: `/kaggle/working/disinformation_results.zip`.
+- Runs the paper post-processing scripts and builds one downloadable results archive:
+  `/kaggle/working/disinformation_results.zip`.
+- Optionally builds a separate checkpoint archive: `/kaggle/working/models.zip`.
 """
     ),
     md(
@@ -89,6 +92,7 @@ RUN_TRANSFORMER = True
 RUN_HYBRID = True            # leakage-corrected hybrid (defensible thesis default)
 RUN_HYBRID_TEXTONLY = True   # RQ2 ablation (text-only via the hybrid pipeline)
 RUN_HYBRID_LEAKY = True      # prior-art comparison (credibility counts include the row's own verdict)
+CREATE_MODELS_ZIP = True     # separate checkpoint archive; not included in disinformation_results.zip
 
 # Canonical multi-seed run for thesis/paper reporting. Must match
 # `training.seeds` in config/transformer.yaml and config/hybrid.yaml so
@@ -344,9 +348,13 @@ def snapshot_seed(seed: int) -> dict:
     files_to_copy = [
         "baseline_detailed_metrics.json",
         "transformer_logs/transformer_test_metrics.json",
+        "transformer_logs/training_log.csv",
         "hybrid_logs/hybrid_test_metrics.json",
+        "hybrid_logs/training_log.csv",
         "hybrid_textonly_logs/hybrid_test_metrics.json",
+        "hybrid_textonly_logs/training_log.csv",
         "hybrid_leaky_logs/hybrid_test_metrics.json",
+        "hybrid_leaky_logs/training_log.csv",
     ]
     for rel in files_to_copy:
         src = REPORTS_DIR / rel
@@ -563,364 +571,115 @@ print(json.dumps(multi_seed_payload, indent=2))
 """
     ),
     md(
-        """## 8. Generate dissertation figures
+        """## 8. Generate only the paper artifacts
 
-Produce a diverse set of publication-ready plots from the artefacts written above, without
-re-running training. For every deep model (transformer, hybrid, hybrid_textonly) we emit:
+Run the post-training scripts that the paper actually uses. This replaces the old broad
+diagnostic gallery and writes only:
 
-- **Loss curve (train + val)** — replaces the train-only plot; both curves on one axis.
-- **Training loss only** and **validation loss only** — kept as standalone variants for the
-  appendix.
-- **Validation macro-F1 by epoch**.
-- **Confusion matrix** (raw counts + row-normalised).
-- **Per-class F1 / precision / recall bar charts** on the test split.
+- leakage verification JSON reports;
+- bootstrap confidence-interval JSON/table reports;
+- the three final paper figure pairs under `figures/`.
 
-For the TF-IDF baselines we emit per-class bars and confusion matrices per classifier.
-
-Finally, cross-model summary plots: macro-F1 comparison, accuracy comparison, combined loss
-curves, combined validation macro-F1 curves.
-
-All figures land in `reports/figures_all/` as 300-DPI PNG **and** vector PDF (so you can drop
-either into LaTeX).
+No `reports/figures_all/` gallery is generated.
 """
     ),
     code(
-        """import json
+        """import os
+import subprocess
+import sys
 from pathlib import Path
 
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
+postprocess_env = {**os.environ, "PYTHONPATH": REPO_DIR}
+postprocess_steps = [
+    ("Leakage verification", [sys.executable, "scripts/verify_leakage.py"]),
+    ("Bootstrap confidence intervals", [sys.executable, "scripts/bootstrap_ci.py"]),
+    ("Per-class F1 figure", [sys.executable, "scripts/plot_per_class_f1.py"]),
+    (
+        "Confusion matrices figure",
+        [sys.executable, "scripts/plot_confusion_matrices.py"],
+    ),
+    (
+        "Training curves figure",
+        [
+            sys.executable,
+            "scripts/plot_training_curves.py",
+            "--seed",
+            str(PRIMARY_SEED),
+        ],
+    ),
+]
 
-FIG_ROOT = Path(REPO_DIR) / "reports" / "figures_all"
-FIG_ROOT.mkdir(parents=True, exist_ok=True)
+for name, argv in postprocess_steps:
+    print(f"\n=== {name} ===")
+    subprocess.run(argv, cwd=REPO_DIR, env=postprocess_env, check=True)
 
-DL_MODELS = {
-    \"transformer\":     {
-        \"log\":     \"reports/transformer_logs/training_log.csv\",
-        \"metrics\": \"reports/transformer_logs/transformer_test_metrics.json\",
-        \"pretty\":  \"RoBERTa (text-only)\",
-    },
-    \"hybrid\": {
-        \"log\":     \"reports/hybrid_logs/training_log.csv\",
-        \"metrics\": \"reports/hybrid_logs/hybrid_test_metrics.json\",
-        \"pretty\":  \"Hybrid (text + metadata, leakage-corrected)\",
-    },
-    \"hybrid_textonly\": {
-        \"log\":     \"reports/hybrid_textonly_logs/training_log.csv\",
-        \"metrics\": \"reports/hybrid_textonly_logs/hybrid_test_metrics.json\",
-        \"pretty\":  \"Hybrid (text-only ablation)\",
-    },
-    \"hybrid_leaky\": {
-        \"log\":     \"reports/hybrid_leaky_logs/training_log.csv\",
-        \"metrics\": \"reports/hybrid_leaky_logs/hybrid_test_metrics.json\",
-        \"pretty\":  \"Hybrid (leaky / prior-art comparison)\",
-    },
-}
-
-plt.rcParams.update({\"figure.dpi\": 150, \"savefig.dpi\": 300, \"font.size\": 11})
-
-
-def _save(fig, stem: str) -> None:
-    png = FIG_ROOT / f\"{stem}.png\"
-    pdf = FIG_ROOT / f\"{stem}.pdf\"
-    fig.tight_layout()
-    fig.savefig(png)
-    fig.savefig(pdf)
-    plt.close(fig)
-    print(f\"  wrote {png.relative_to(REPO_DIR)} (+ .pdf)\")
-
-
-def _line(ax, x, y, label, marker=\"o\"):
-    ax.plot(x, y, marker=marker, linewidth=1.8, label=label)
-
-
-# ---- per-DL-model training diagnostics ----
-for key, cfg in DL_MODELS.items():
-    log_path = Path(REPO_DIR) / cfg[\"log\"]
-    if not log_path.exists():
-        print(f\"skip {key}: no training log at {cfg['log']}\")
-        continue
-    df = pd.read_csv(log_path)
-    pretty = cfg[\"pretty\"]
-
-    # Combined loss curve (train + val) — the main loss graph for the thesis.
-    fig, ax = plt.subplots(figsize=(7, 4.2))
-    _line(ax, df[\"epoch\"], df[\"train_loss\"], \"Train loss\")
-    _line(ax, df[\"epoch\"], df[\"val_loss\"],   \"Validation loss\", marker=\"s\")
-    ax.set_xlabel(\"Epoch\"); ax.set_ylabel(\"Cross-entropy loss\")
-    ax.set_title(f\"{pretty} — training vs validation loss\")
-    ax.grid(alpha=0.3); ax.legend()
-    _save(fig, f\"{key}_loss_curve\")
-
-    # Training loss only (kept for completeness).
-    fig, ax = plt.subplots(figsize=(7, 4.2))
-    _line(ax, df[\"epoch\"], df[\"train_loss\"], \"Train loss\")
-    ax.set_xlabel(\"Epoch\"); ax.set_ylabel(\"Training loss\")
-    ax.set_title(f\"{pretty} — training loss\"); ax.grid(alpha=0.3); ax.legend()
-    _save(fig, f\"{key}_train_loss_only\")
-
-    # Validation loss only.
-    fig, ax = plt.subplots(figsize=(7, 4.2))
-    _line(ax, df[\"epoch\"], df[\"val_loss\"], \"Validation loss\", marker=\"s\")
-    ax.set_xlabel(\"Epoch\"); ax.set_ylabel(\"Validation loss\")
-    ax.set_title(f\"{pretty} — validation loss\"); ax.grid(alpha=0.3); ax.legend()
-    _save(fig, f\"{key}_val_loss_only\")
-
-    # Validation macro-F1 by epoch.
-    if \"val_macro_f1\" in df.columns:
-        fig, ax = plt.subplots(figsize=(7, 4.2))
-        _line(ax, df[\"epoch\"], df[\"val_macro_f1\"], \"Validation macro-F1\", marker=\"^\")
-        ax.set_xlabel(\"Epoch\"); ax.set_ylabel(\"Macro-F1\")
-        ax.set_title(f\"{pretty} — validation macro-F1 by epoch\")
-        ax.grid(alpha=0.3); ax.legend()
-        _save(fig, f\"{key}_val_macro_f1\")
-
-
-def _plot_confusion(matrix, labels, title, stem, normalize=False):
-    m = np.array(matrix, dtype=float)
-    if normalize:
-        row_sums = m.sum(axis=1, keepdims=True)
-        row_sums[row_sums == 0] = 1.0
-        m = m / row_sums
-    fig, ax = plt.subplots(figsize=(6.5, 5.5))
-    im = ax.imshow(m, cmap=\"Blues\")
-    ax.set_xticks(range(len(labels))); ax.set_yticks(range(len(labels)))
-    ax.set_xticklabels(labels, rotation=45, ha=\"right\")
-    ax.set_yticklabels(labels)
-    ax.set_xlabel(\"Predicted\"); ax.set_ylabel(\"True\"); ax.set_title(title)
-    fmt = \"{:.2f}\" if normalize else \"{:.0f}\"
-    thresh = m.max() / 2.0 if m.size else 0.0
-    for i in range(m.shape[0]):
-        for j in range(m.shape[1]):
-            ax.text(j, i, fmt.format(m[i, j]), ha=\"center\", va=\"center\",
-                    color=\"white\" if m[i, j] > thresh else \"black\", fontsize=9)
-    fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-    _save(fig, stem)
-
-
-def _plot_per_class(values: dict, title: str, ylabel: str, stem: str):
-    labels = list(values.keys())
-    vals = [values[k] for k in labels]
-    fig, ax = plt.subplots(figsize=(7.5, 4.5))
-    bars = ax.bar(labels, vals, color=\"#4C72B0\")
-    for bar, v in zip(bars, vals):
-        ax.text(bar.get_x() + bar.get_width() / 2, v + 0.005, f\"{v:.2f}\",
-                ha=\"center\", va=\"bottom\", fontsize=9)
-    ax.set_ylim(0, max(max(vals) + 0.1, 0.1))
-    ax.set_ylabel(ylabel); ax.set_title(title)
-    plt.xticks(rotation=30, ha=\"right\"); ax.grid(alpha=0.3, axis=\"y\")
-    _save(fig, stem)
-
-
-# ---- per-DL-model test-split diagnostics ----
-for key, cfg in DL_MODELS.items():
-    mj = Path(REPO_DIR) / cfg[\"metrics\"]
-    if not mj.exists():
-        print(f\"skip {key}: no metrics JSON at {cfg['metrics']}\")
-        continue
-    payload = json.loads(mj.read_text())
-    labels = payload[\"test_confusion_matrix_labels\"]
-    cm = payload[\"test_confusion_matrix\"]
-    _plot_confusion(cm, labels, f\"{cfg['pretty']} — confusion matrix (test)\",
-                    f\"{key}_confusion_matrix\", normalize=False)
-    _plot_confusion(cm, labels, f\"{cfg['pretty']} — normalised confusion matrix (test)\",
-                    f\"{key}_confusion_matrix_normalised\", normalize=True)
-    _plot_per_class(payload[\"test_per_class_f1\"],
-                    f\"{cfg['pretty']} — per-class F1\", \"F1\", f\"{key}_per_class_f1\")
-    _plot_per_class(payload[\"test_per_class_precision\"],
-                    f\"{cfg['pretty']} — per-class precision\", \"Precision\", f\"{key}_per_class_precision\")
-    _plot_per_class(payload[\"test_per_class_recall\"],
-                    f\"{cfg['pretty']} — per-class recall\", \"Recall\", f\"{key}_per_class_recall\")
-
-
-# ---- baselines (TF-IDF NB / SVM / RF) ----
-baseline_path = Path(REPO_DIR) / \"reports\" / \"baseline_detailed_metrics.json\"
-if baseline_path.exists():
-    baseline = json.loads(baseline_path.read_text())
-    for model_name, splits in baseline.items():
-        test_split = splits.get(\"test\") if isinstance(splits, dict) else None
-        if not test_split:
-            continue
-        labels = test_split[\"confusion_matrix_labels\"]
-        _plot_confusion(test_split[\"confusion_matrix\"], labels,
-                        f\"Baseline {model_name} — confusion matrix (test)\",
-                        f\"baseline_{model_name}_confusion_matrix\", normalize=False)
-        _plot_confusion(test_split[\"confusion_matrix\"], labels,
-                        f\"Baseline {model_name} — normalised confusion matrix (test)\",
-                        f\"baseline_{model_name}_confusion_matrix_normalised\", normalize=True)
-        _plot_per_class(test_split[\"per_class_f1\"],
-                        f\"Baseline {model_name} — per-class F1\", \"F1\",
-                        f\"baseline_{model_name}_per_class_f1\")
-        _plot_per_class(test_split[\"per_class_precision\"],
-                        f\"Baseline {model_name} — per-class precision\", \"Precision\",
-                        f\"baseline_{model_name}_per_class_precision\")
-        _plot_per_class(test_split[\"per_class_recall\"],
-                        f\"Baseline {model_name} — per-class recall\", \"Recall\",
-                        f\"baseline_{model_name}_per_class_recall\")
-
-
-# ---- cross-model comparison (all models on the test split) ----
-rows = []
-if baseline_path.exists():
-    for model_name, splits in json.loads(baseline_path.read_text()).items():
-        test_split = splits.get(\"test\") if isinstance(splits, dict) else None
-        if test_split:
-            rows.append((f\"baseline_{model_name}\", test_split[\"accuracy\"], test_split[\"macro_f1\"]))
-for key, cfg in DL_MODELS.items():
-    mj = Path(REPO_DIR) / cfg[\"metrics\"]
-    if mj.exists():
-        p = json.loads(mj.read_text())
-        rows.append((key, p[\"test_accuracy\"], p[\"test_macro_f1\"]))
-
-if rows:
-    names   = [r[0] for r in rows]
-    accs    = [r[1] for r in rows]
-    f1s     = [r[2] for r in rows]
-
-    fig, ax = plt.subplots(figsize=(9, 4.5))
-    bars = ax.barh(names, f1s, color=\"#55A868\")
-    for bar, v in zip(bars, f1s):
-        ax.text(v + 0.003, bar.get_y() + bar.get_height() / 2, f\"{v:.3f}\",
-                va=\"center\", fontsize=9)
-    ax.set_xlim(0, max(f1s) + 0.05)
-    ax.set_xlabel(\"Macro-F1 (test)\"); ax.set_title(\"Model comparison — test macro-F1\")
-    ax.grid(alpha=0.3, axis=\"x\")
-    _save(fig, \"model_comparison_macro_f1\")
-
-    fig, ax = plt.subplots(figsize=(9, 4.5))
-    bars = ax.barh(names, accs, color=\"#C44E52\")
-    for bar, v in zip(bars, accs):
-        ax.text(v + 0.003, bar.get_y() + bar.get_height() / 2, f\"{v:.3f}\",
-                va=\"center\", fontsize=9)
-    ax.set_xlim(0, max(accs) + 0.05)
-    ax.set_xlabel(\"Accuracy (test)\"); ax.set_title(\"Model comparison — test accuracy\")
-    ax.grid(alpha=0.3, axis=\"x\")
-    _save(fig, \"model_comparison_accuracy\")
-
-    # Grouped bar: accuracy vs macro-F1 per model.
-    idx = np.arange(len(names)); w = 0.38
-    fig, ax = plt.subplots(figsize=(10, 5))
-    ax.bar(idx - w / 2, accs, w, label=\"Accuracy\",  color=\"#4C72B0\")
-    ax.bar(idx + w / 2, f1s,  w, label=\"Macro-F1\", color=\"#DD8452\")
-    ax.set_xticks(idx); ax.set_xticklabels(names, rotation=30, ha=\"right\")
-    ax.set_ylabel(\"Score\"); ax.set_title(\"Model comparison — accuracy vs macro-F1 (test)\")
-    ax.grid(alpha=0.3, axis=\"y\"); ax.legend()
-    _save(fig, \"model_comparison_accuracy_vs_f1\")
-
-
-# ---- combined DL training curves (all on one axis) ----
-combined_loss, combined_val, combined_f1 = [], [], []
-for key, cfg in DL_MODELS.items():
-    log_path = Path(REPO_DIR) / cfg[\"log\"]
-    if log_path.exists():
-        df = pd.read_csv(log_path)
-        combined_loss.append((cfg[\"pretty\"], df))
-        combined_val.append((cfg[\"pretty\"], df))
-        combined_f1.append((cfg[\"pretty\"], df))
-
-if combined_loss:
-    fig, ax = plt.subplots(figsize=(8, 4.8))
-    for pretty, df in combined_loss:
-        ax.plot(df[\"epoch\"], df[\"train_loss\"], marker=\"o\", label=f\"{pretty} — train\")
-        ax.plot(df[\"epoch\"], df[\"val_loss\"],   marker=\"s\", linestyle=\"--\",
-                label=f\"{pretty} — val\")
-    ax.set_xlabel(\"Epoch\"); ax.set_ylabel(\"Cross-entropy loss\")
-    ax.set_title(\"All deep models — training vs validation loss\")
-    ax.grid(alpha=0.3); ax.legend(fontsize=8, loc=\"best\")
-    _save(fig, \"combined_loss_curves\")
-
-    fig, ax = plt.subplots(figsize=(8, 4.8))
-    for pretty, df in combined_val:
-        if \"val_loss\" in df.columns:
-            ax.plot(df[\"epoch\"], df[\"val_loss\"], marker=\"s\", label=pretty)
-    ax.set_xlabel(\"Epoch\"); ax.set_ylabel(\"Validation loss\")
-    ax.set_title(\"All deep models — validation loss\")
-    ax.grid(alpha=0.3); ax.legend(fontsize=9)
-    _save(fig, \"combined_val_loss\")
-
-    fig, ax = plt.subplots(figsize=(8, 4.8))
-    for pretty, df in combined_f1:
-        if \"val_macro_f1\" in df.columns:
-            ax.plot(df[\"epoch\"], df[\"val_macro_f1\"], marker=\"^\", label=pretty)
-    ax.set_xlabel(\"Epoch\"); ax.set_ylabel(\"Validation macro-F1\")
-    ax.set_title(\"All deep models — validation macro-F1 by epoch\")
-    ax.grid(alpha=0.3); ax.legend(fontsize=9)
-    _save(fig, \"combined_val_macro_f1\")
-
-print(f\"\\nAll figures saved under {FIG_ROOT.relative_to(REPO_DIR)}/\")
-print(f\"Total files: {sum(1 for _ in FIG_ROOT.iterdir())}\")
+figure_dir = Path(REPO_DIR) / "figures"
+expected_figures = [
+    "per_class_f1_grouped.pdf",
+    "per_class_f1_grouped.png",
+    "confusion_matrices.pdf",
+    "confusion_matrices.png",
+    "training_curves.pdf",
+    "training_curves.png",
+]
+print("\nFinal paper figures:")
+for name in expected_figures:
+    path = figure_dir / name
+    if path.exists():
+        print(f"  {path.relative_to(REPO_DIR)}")
+    else:
+        print(f"  MISSING: {name}")
 """
     ),
     md(
-        """## 9. Create one downloadable results archive
+        """## 9. Create downloadable archives
 
-This writes one archive to the Kaggle **Output** panel:
+This writes the paper/reproducibility archive to the Kaggle **Output** panel:
 `/kaggle/working/disinformation_results.zip`.
 
-It contains the metrics, per-example prediction JSONL files, per-seed snapshots, training
-logs, and generated figures needed for thesis/paper analysis. Model checkpoints are not
-included because they are large and not needed for the statistical analysis artifacts.
+If `CREATE_MODELS_ZIP = True`, it also writes checkpoints separately to:
+`/kaggle/working/models.zip`.
+
+It contains only the artifacts needed for the paper: aggregate metric JSONs,
+seed-scoped metric JSONs, TEST prediction JSONL files, bootstrap/leakage reports,
+the final figure files, and primary-seed training logs for Fig. 3. Model checkpoints
+and broad diagnostic figure galleries are intentionally excluded.
 """
     ),
     code(
-        """import json
-import subprocess
-from pathlib import Path
+        """import subprocess
+import sys
 
-repo = Path(REPO_DIR)
-reports_dir = repo / \"reports\"
-archive_path = Path(\"/kaggle/working/disinformation_results.zip\")
-
-archive_inputs = [
-    \"reports/baseline_detailed_metrics.json\",
-    \"reports/results_summary.json\",
-    \"reports/multi_seed_summary.json\",
-    \"reports/transformer_logs\",
-    \"reports/hybrid_logs\",
-    \"reports/hybrid_textonly_logs\",
-    \"reports/hybrid_leaky_logs\",
-    \"reports/predictions\",
-    \"reports/figures_all\",
+archive_cmd = [
+    sys.executable,
+    "scripts/package_artifacts.py",
+    "--output",
+    "/kaggle/working/disinformation_results.zip",
+    "--seeds",
+    *[str(seed) for seed in SEEDS],
+    "--primary-seed",
+    str(PRIMARY_SEED),
 ]
-# Dynamic per-seed snapshot directories so changing SEEDS in cell 0 keeps the
-# archive in sync (the previous static list silently dropped seeds when the
-# canonical SEEDS were updated).
-archive_inputs.extend(f\"reports/seed_{seed}\" for seed in SEEDS)
-existing_inputs = [item for item in archive_inputs if (repo / item).exists()]
-missing_inputs = [item for item in archive_inputs if not (repo / item).exists()]
+if CREATE_MODELS_ZIP:
+    archive_cmd.extend([
+        "--include-models",
+        "--models-output",
+        "/kaggle/working/models.zip",
+    ])
 
-manifest = {
-    \"archive\": str(archive_path),
-    \"included_paths\": existing_inputs,
-    \"missing_optional_paths\": missing_inputs,
-    \"model_checkpoints_included\": False,
-    \"note\": (
-        \"This archive contains thesis/paper result artifacts: metrics, prediction JSONL, \"
-        \"per-seed snapshots, logs, and figures. Model checkpoints are excluded to keep \"
-        \"the required download smaller.\"
-    ),
-}
-manifest_path = reports_dir / \"archive_manifest.json\"
-manifest_path.write_text(json.dumps(manifest, indent=2), encoding=\"utf-8\")
-existing_inputs.append(\"reports/archive_manifest.json\")
-
-if archive_path.exists():
-    archive_path.unlink()
-
-subprocess.run([\"zip\", \"-r\", str(archive_path), *existing_inputs], cwd=REPO_DIR, check=True)
-print(f\"Created one results archive: {archive_path}\")
-print(\"Download disinformation_results.zip from the Kaggle Output panel.\")
-if missing_inputs:
-    print(\"Skipped missing optional paths:\", missing_inputs)
+subprocess.run(archive_cmd, cwd=REPO_DIR, check=True)
+print("Created /kaggle/working/disinformation_results.zip")
+if CREATE_MODELS_ZIP:
+    print("Created /kaggle/working/models.zip if models/ exists")
 """
     ),
     md(
         """## Done
 
 - Download `/kaggle/working/disinformation_results.zip` from the Kaggle Output panel.
-- The archive contains metrics, multi-seed summaries, TEST prediction JSONL files, per-seed
-  snapshots, training logs, and generated dissertation figures.
+- If enabled, download `/kaggle/working/models.zip` separately from the Kaggle Output panel.
+- The archive contains aggregate metrics, seed-scoped metrics, TEST prediction JSONL files,
+  bootstrap/leakage reports, final paper figures, and primary-seed training logs for Fig. 3.
 - Model checkpoints remain in the Kaggle session under `models/`; they are intentionally not
   part of the required results archive.
 """

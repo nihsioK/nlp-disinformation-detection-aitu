@@ -1,0 +1,105 @@
+{
+  "best_val_macro_f1": 0.27631310950309135,
+  "test_accuracy": 0.2798129384255651,
+  "test_macro_f1": 0.2809555046255405,
+  "test_per_class_f1": {
+    "pants-fire": 0.3253012048192771,
+    "false": 0.30406852248394006,
+    "barely-true": 0.21714285714285714,
+    "half-true": 0.264,
+    "mostly-true": 0.26778242677824265,
+    "true": 0.3074380165289256
+  },
+  "test_per_class_precision": {
+    "pants-fire": 0.36486486486486486,
+    "false": 0.3271889400921659,
+    "barely-true": 0.27941176470588236,
+    "half-true": 0.2832618025751073,
+    "mostly-true": 0.2794759825327511,
+    "true": 0.23604060913705585
+  },
+  "test_per_class_recall": {
+    "pants-fire": 0.29347826086956524,
+    "false": 0.284,
+    "barely-true": 0.17757009345794392,
+    "half-true": 0.24719101123595505,
+    "mostly-true": 0.2570281124497992,
+    "true": 0.44075829383886256
+  },
+  "test_confusion_matrix": [
+    [
+      27,
+      23,
+      14,
+      9,
+      7,
+      12
+    ],
+    [
+      12,
+      71,
+      36,
+      32,
+      33,
+      66
+    ],
+    [
+      14,
+      35,
+      38,
+      46,
+      37,
+      44
+    ],
+    [
+      14,
+      38,
+      30,
+      66,
+      37,
+      82
+    ],
+    [
+      3,
+      23,
+      14,
+      48,
+      64,
+      97
+    ],
+    [
+      4,
+      27,
+      4,
+      32,
+      51,
+      93
+    ]
+  ],
+  "test_confusion_matrix_labels": [
+    "pants-fire",
+    "false",
+    "barely-true",
+    "half-true",
+    "mostly-true",
+    "true"
+  ],
+  "loss_config": {
+    "type": "ordinal",
+    "ce_weight": 1.0,
+    "emd_weight": 0.5
+  },
+  "seed": 42,
+  "run_timestamp": "2026-04-27T06:02:38.057302+00:00",
+  "device": "cuda",
+  "environment": {
+    "git_sha": "eb644954344e99b3a11b1491e3392f168a669556",
+    "python_version": "3.12.12",
+    "python_executable": "/usr/bin/python3",
+    "torch_version": "2.10.0+cu128",
+    "transformers_version": "5.0.0",
+    "device": "cuda",
+    "seed": 42,
+    "run_timestamp": "2026-04-27T06:02:38.057302+00:00"
+  }
+}

@@ -1,206 +1,93 @@
-# Running the training pipeline on Kaggle
+# Running the GPU training notebook on Kaggle
 
-This guide walks you end-to-end through running every training stage
-(`baseline`, `transformer`, `hybrid`, `hybrid-textonly`) on a free Kaggle
-GPU and pushing the resulting metric JSON files back into this
-repository. The whole pipeline takes **~60–90 minutes** on a P100.
+This guide documents the clean end-to-end remote run. The notebook trains all
+reported systems, runs the paper post-processing scripts, and creates two
+downloadable archives: a required results archive and an optional checkpoint
+archive. It does not push back to GitHub and does not generate the old
+diagnostic figure gallery.
 
-Use this instead of training locally when you want to keep your
-laptop/desktop free or when you do not have a CUDA GPU.
+## Notebook
 
-> TL;DR: open `notebooks/kaggle_training.ipynb` on Kaggle, enable GPU +
-> Internet, add a `GH_PAT` secret, hit **Run all**.
+Upload `notebooks/training.ipynb` to Kaggle and run it with:
 
----
+- Accelerator: `GPU T4 x2` preferred.
+- Internet: On.
+- Persistence: not required.
+- Branch: set in the first code cell, default `main`.
 
-## 1. Prerequisites (one-time)
+If Kaggle assigns a P100 and the GPU check reports unsupported CUDA kernels,
+either switch to T4 or enable the optional PyTorch reinstall cell in the
+notebook, restart the kernel, and continue from the clone step.
 
-### 1.1 Kaggle account
+## What It Runs
 
-1. Create a free account at <https://www.kaggle.com/>.
-2. Go to **Settings** → **Phone verification** and verify your phone.
-   Without this, Kaggle will not let you enable GPU or Internet in
-   notebooks.
+The default notebook run executes:
 
-### 1.2 GitHub Personal Access Token (PAT)
+- `scripts/download_data.py`
+- `scripts/preprocess.py`
+- `scripts/train_baseline.py`
+- `scripts/train_transformer.py`
+- `scripts/train_hybrid.py` for corrected, text-only, and leaky variants
+- `scripts/verify_leakage.py`
+- `scripts/bootstrap_ci.py`
+- `scripts/plot_per_class_f1.py`
+- `scripts/plot_confusion_matrices.py`
+- `scripts/plot_training_curves.py`
 
-The notebook pushes JSON metrics to `main` after training so the paper
-run is captured in git. That push needs a token.
+The canonical seeds are `42`, `1337`, and `2024`.
 
-1. Visit <https://github.com/settings/tokens>.
-2. **Generate new token (classic)**.
-3. **Note**: `kaggle-training-push`.
-4. **Expiration**: 30 days is plenty.
-5. **Scope**: only `repo` (full control of private repositories).
-6. Click **Generate token** and **copy it once** — GitHub will never
-   show it again.
+## Output Archives
 
-### 1.3 Kaggle secret
+The required artifact is `/kaggle/working/disinformation_results.zip`. Download
+it from the Kaggle Output panel.
 
-1. On Kaggle, open any notebook and click **Add-ons** → **Secrets**.
-2. **Add a new secret**.
-   - Label: `GH_PAT`
-   - Value: paste the token from step 1.2.
-3. Enable the secret (toggle on) for the training notebook.
+If `CREATE_MODELS_ZIP = True`, the notebook also writes
+`/kaggle/working/models.zip`. Keep this separate. It is useful for checkpoint
+archival, but it is not needed for paper tables, figures, or Overleaf.
 
-The notebook reads this via `UserSecretsClient().get_secret("GH_PAT")`
-and never prints the value.
+`disinformation_results.zip` intentionally contains only paper/reproducibility
+artifacts:
 
----
+- aggregate summaries: `reports/results_summary.json`, `reports/multi_seed_summary.json`
+- bootstrap/leakage reports: `reports/bootstrap_ci*`, `reports/leakage_verification*`
+- seed-scoped metric JSON files under `reports/seed_<seed>/`
+- seed-scoped TEST prediction JSONL files under `reports/seed_<seed>/predictions/`
+- final paper figures under `figures/`
+- primary-seed training logs needed for the training-curves figure
 
-## 2. Create the training notebook
+It intentionally excludes model checkpoints, broad diagnostic figure galleries,
+duplicate top-level prediction copies, raw run-history CSVs, caches, and virtual
+environments.
 
-1. On Kaggle, click **Create** → **New Notebook**.
-2. In the top bar: **File** → **Import notebook** and upload
-   `notebooks/kaggle_training.ipynb` from this repo.
-3. Open the right sidebar and configure the session:
-   - **Accelerator**: **`GPU T4 x2`** (recommended). **Do NOT pick `GPU P100`** — Kaggle's
-     current PyTorch build does not ship CUDA kernels for P100's compute capability (`sm_60`),
-     so transformer training crashes with `cudaErrorNoKernelImageForDevice`. T4 (`sm_75`)
-     works out of the box. If Kaggle only gives you a P100, see §7 "P100 GPU".
-   - **Persistence**: `No persistence` is fine; we re-clone each run.
-   - **Environment**: `Always use latest environment`.
-   - **Internet**: **ON** (required — we clone GitHub and `pip install`).
-4. Under **Add-ons** → **Secrets** make sure `GH_PAT` is attached.
+## Local Reproducibility Workflow
 
-Kaggle quota reminder: you get ~30 GPU hours/week for free. A full run
-is well under 2 hours, so you can do many iterations.
-
----
-
-## 3. Configure the run (first code cell)
-
-The very first cell of the notebook defines which stages to run. The
-defaults are sensible, but open it and confirm:
-
-```python
-GITHUB_USER = "nihsioK"
-REPO_NAME   = "nlp-disinformation-detection-aitu"
-BRANCH      = "main"
-
-RUN_BASELINE          = True
-RUN_TRANSFORMER       = True
-RUN_HYBRID            = True
-RUN_HYBRID_TEXTONLY   = True
-
-PUSH_RESULTS_TO_GITHUB = True   # set False if you just want to smoke-test
-ZIP_CHECKPOINTS        = False  # True if you want to download models/ manually
-```
-
-If you only want to re-run one stage (e.g. you iterated on the hybrid
-config), set the other `RUN_*` flags to `False`.
-
----
-
-## 4. Run the notebook
-
-Click **Run All**. Cells execute top-to-bottom:
-
-| # | Cell | What happens |
-|---|------|--------------|
-| 1 | Config | Reads the flags above. |
-| 2 | GPU check | `nvidia-smi` — verify the P100 is attached. |
-| 3 | Clone | `git clone --depth 1 --branch main` into `/kaggle/working/repo`. |
-| 4 | Install | `pip install --no-deps -e .` (torch/transformers already installed by Kaggle). Downloads NLTK `stopwords`/`punkt`. |
-| 5 | Dataset | Downloads LIAR (`make download-liar`) into `data/raw/`. |
-| 6 | Preprocess | `make preprocess` → `data/processed/*.csv`. |
-| 7 | Baseline | `make baseline`. |
-| 8 | Transformer | `make transformer`. |
-| 9 | Hybrid | `make hybrid`. |
-| 10 | Hybrid text-only | Generates a temp config with `use_metadata: false` and redirected `logs_dir`/`models_dir`, then trains — this is the RQ2 ablation. |
-| 11 | Collect | Aggregates all `*_test_metrics.json` into `reports/results_summary.json`. |
-| 12 | Push | Commits JSON files to `main` via `GH_PAT`. |
-| 13 | Zip (optional) | Zips `models/` so you can download checkpoints from the **Output** tab. |
-
-Each training cell prints wall-clock time so you know where the minutes
-went.
-
----
-
-## 5. What gets pushed back to the repo
-
-Only JSON metric files are pushed. Model weights (hundreds of MB) are
-**not** pushed — grab them from Kaggle's **Output** tab if you need
-them locally.
-
-Files committed to `main`:
-
-```
-reports/results_summary.json
-reports/baseline_detailed_metrics.json
-reports/transformer_logs/transformer_test_metrics.json
-reports/hybrid_logs/hybrid_test_metrics.json
-reports/hybrid_textonly_logs/hybrid_test_metrics.json
-```
-
-Each JSON contains macro-F1, test accuracy, and per-class F1 on the
-TEST split (1283 examples). These are the numbers that go into the
-IEEE paper.
-
-The commit message is `chore(results): add Kaggle training run metrics`.
-
----
-
-## 6. Downloading the trained models
-
-Checkpoints are written to `models/` inside the Kaggle session only.
-
-- **Individual files**: open the **Output** tab on the right, browse to
-  `repo/models/...`, click **Download**.
-- **Everything at once**: set `ZIP_CHECKPOINTS = True` in the config
-  cell. The final cell zips `models/` into
-  `/kaggle/working/models.zip` — then download the single archive from
-  **Output**.
-
----
-
-## 7. Troubleshooting
-
-**Transformer crashes with `CUDA error: no kernel image is available for execution on the device` / `cudaErrorNoKernelImageForDevice` (P100 GPU)**
-You are on a P100 (`sm_60`) but Kaggle's default `torch` wheel only contains kernels for
-`sm_70+`. Two fixes:
-
-- **Preferred**: in the right sidebar, change **Accelerator** to `GPU T4 x2` and restart
-  the kernel. T4 has `sm_75` and just works.
-- **Fallback** (if you really need P100): enable Cell 2b in the notebook to reinstall
-  `torch==2.4.1 torchvision==0.19.1 torchaudio==2.4.1` from the official `cu121` index,
-  which includes `sm_60` kernels. Then **Run → Restart kernel** and continue from Cell 3.
-
-**`RuntimeError: Could not load Kaggle Secret 'GH_PAT'`**
-You either didn't add the secret or didn't attach it to the notebook.
-Go to **Add-ons** → **Secrets** and toggle `GH_PAT` on.
-
-**`fatal: Authentication failed for 'https://github.com/...'`**
-The token expired, was revoked, or lacks `repo` scope. Generate a new
-PAT and update the Kaggle secret.
-
-**Transformer cell dies with `CUDA out of memory`**
-Unlikely on a P100 with our config (`batch 16 × accum 2`, `max_length
-64`). If it happens, open `config/transformer.yaml` and drop
-`batch_size` to 8.
-
-**`make: *** No rule to make target 'baseline'`**
-The repo didn't clone correctly. Re-run cell 3 (clone) and cell 4
-(install).
-
-**No GPU detected in cell 2**
-The session was created without an accelerator. In the right sidebar,
-change **Accelerator** to **GPU P100** and **restart** the kernel.
-
-**Kaggle kicks you off after 20 min of inactivity**
-Normal. As long as cells are executing, the session stays alive. If
-you close the browser tab, the run continues — come back later and
-check the **Output** tab.
-
----
-
-## 8. Regenerating the notebook
-
-Do **not** hand-edit `notebooks/kaggle_training.ipynb`. It is generated
-from `notebooks/_build_kaggle_notebook.py`:
+After downloading the Kaggle results archive, copy `disinformation_results.zip`
+to the repository root and run:
 
 ```bash
-python notebooks/_build_kaggle_notebook.py
+make import-results
+make figures
+make package-overleaf
 ```
 
-Edit the Python file, re-run the generator, commit both files.
+`make import-results` safely extracts only `reports/` and `figures/` artifacts
+from the archive. `make figures` regenerates deterministic final figures from
+the imported result files when possible. `make package-overleaf` creates
+`dist/overleaf_submission.zip` containing only `main.tex`, `references.bib`, and
+the final figure PDFs needed by Overleaf.
+
+If your downloaded archive is elsewhere, pass it explicitly:
+
+```bash
+make import-results RESULTS_ZIP=/path/to/disinformation_results.zip
+```
+
+## Regenerating The Notebook
+
+Do not hand-edit `notebooks/training.ipynb`. It is generated from:
+
+```bash
+python notebooks/_build_training_notebook.py
+```
+
+Edit the generator, run it, and commit both files.

@@ -1,0 +1,116 @@
+{
+  "best_val_macro_f1": 0.293785047360009,
+  "test_accuracy": 0.2954014029618083,
+  "test_macro_f1": 0.2875166912506786,
+  "test_per_class_f1": {
+    "pants-fire": 0.3463687150837989,
+    "false": 0.3346613545816733,
+    "barely-true": 0.15331010452961671,
+    "half-true": 0.2984126984126984,
+    "mostly-true": 0.3436426116838488,
+    "true": 0.24870466321243523
+  },
+  "test_per_class_precision": {
+    "pants-fire": 0.3563218390804598,
+    "false": 0.3333333333333333,
+    "barely-true": 0.3013698630136986,
+    "half-true": 0.25895316804407714,
+    "mostly-true": 0.3003003003003003,
+    "true": 0.2742857142857143
+  },
+  "test_per_class_recall": {
+    "pants-fire": 0.33695652173913043,
+    "false": 0.336,
+    "barely-true": 0.102803738317757,
+    "half-true": 0.352059925093633,
+    "mostly-true": 0.40160642570281124,
+    "true": 0.22748815165876776
+  },
+  "test_confusion_matrix": [
+    [
+      31,
+      21,
+      8,
+      17,
+      9,
+      6
+    ],
+    [
+      18,
+      84,
+      16,
+      61,
+      38,
+      33
+    ],
+    [
+      14,
+      36,
+      22,
+      80,
+      43,
+      19
+    ],
+    [
+      10,
+      51,
+      17,
+      94,
+      66,
+      29
+    ],
+    [
+      6,
+      26,
+      7,
+      70,
+      100,
+      40
+    ],
+    [
+      8,
+      34,
+      3,
+      41,
+      77,
+      48
+    ]
+  ],
+  "test_confusion_matrix_labels": [
+    "pants-fire",
+    "false",
+    "barely-true",
+    "half-true",
+    "mostly-true",
+    "true"
+  ],
+  "use_metadata": true,
+  "leakage_corrected": true,
+  "loss_config": {
+    "type": "ordinal",
+    "ce_weight": 1.0,
+    "emd_weight": 0.5
+  },
+  "field_bucket_sizes": {
+    "speaker": 4096,
+    "party": 64,
+    "job": 1024,
+    "state": 256,
+    "subject": 1024,
+    "context": 1024
+  },
+  "metadata_output_dim": 128,
+  "seed": 1337,
+  "run_timestamp": "2026-04-27T07:42:33.831593+00:00",
+  "device": "cuda",
+  "environment": {
+    "git_sha": "eb644954344e99b3a11b1491e3392f168a669556",
+    "python_version": "3.12.12",
+    "python_executable": "/usr/bin/python3",
+    "torch_version": "2.10.0+cu128",
+    "transformers_version": "5.0.0",
+    "device": "cuda",
+    "seed": 1337,
+    "run_timestamp": "2026-04-27T07:42:33.831593+00:00"
+  }
+}

@@ -1,9 +1,12 @@
-.PHONY: install download smoke preprocess baseline transformer hybrid hybrid-textonly hybrid-leaky train-all test clean
+.PHONY: install download smoke preprocess baseline transformer hybrid hybrid-textonly hybrid-leaky train-all test verify-leakage bootstrap-ci figures package-results package-results-with-models import-results package-overleaf paper clean
 
 VENV ?= .venv
 PYTHON_BIN ?= python3.12
 PYTHON := $(VENV)/bin/python
 PIP := $(VENV)/bin/pip
+RESULTS_ZIP ?= disinformation_results.zip
+MODELS_ZIP ?= models.zip
+OVERLEAF_ZIP ?= dist/overleaf_submission.zip
 
 $(PYTHON):
 	$(PYTHON_BIN) -m venv $(VENV)
@@ -49,5 +52,38 @@ train-all: download preprocess baseline transformer hybrid
 test: $(PYTHON)
 	$(PYTHON) -m pytest tests/ -v
 
+# Empirical leakage verification (counting + predictions). Writes
+# reports/leakage_verification{,_predictions}.json and prints a Markdown
+# summary block ready to paste into the paper.
+verify-leakage: $(PYTHON)
+	PYTHONPATH=. $(PYTHON) scripts/verify_leakage.py
+
+bootstrap-ci: $(PYTHON)
+	PYTHONPATH=. $(PYTHON) scripts/bootstrap_ci.py
+
+figures: $(PYTHON)
+	PYTHONPATH=. $(PYTHON) scripts/plot_per_class_f1.py
+	PYTHONPATH=. $(PYTHON) scripts/plot_confusion_matrices.py
+	PYTHONPATH=. $(PYTHON) scripts/plot_training_curves.py
+
+package-results: $(PYTHON)
+	PYTHONPATH=. $(PYTHON) scripts/package_artifacts.py --output $(RESULTS_ZIP)
+
+package-results-with-models: $(PYTHON)
+	PYTHONPATH=. $(PYTHON) scripts/package_artifacts.py --output $(RESULTS_ZIP) --include-models --models-output $(MODELS_ZIP)
+
+import-results: $(PYTHON)
+	PYTHONPATH=. $(PYTHON) scripts/import_results_archive.py $(RESULTS_ZIP)
+
+package-overleaf: $(PYTHON)
+	PYTHONPATH=. $(PYTHON) scripts/package_overleaf.py --output $(OVERLEAF_ZIP)
+
+paper:
+	tectonic main.tex
+
 clean:
-	rm -rf data/processed/ models/ reports/figures/*.png reports/transformer_logs/
+	rm -rf data/processed/ models/ reports/figures_all/ reports/paper/ reports/task1_task3/ paper_figures/
+	rm -rf .pytest_cache/ notebooks/__pycache__/ scripts/__pycache__/ src/__pycache__/ src/disinfo_detection/__pycache__/ tests/__pycache__/
+	rm -f .DS_Store reports/.DS_Store src/.DS_Store reports/archive_manifest.json disinformation_results.zip models.zip
+	rm -f main.aux main.bbl main.bcf main.blg main.fdb_latexmk main.fls main.log main.out main.run.xml main.synctex.gz main.toc main.xdv
+	rm -f paper.aux paper.bbl paper.bcf paper.blg paper.fdb_latexmk paper.fls paper.log paper.out paper.run.xml paper.synctex.gz paper.toc paper.xdv

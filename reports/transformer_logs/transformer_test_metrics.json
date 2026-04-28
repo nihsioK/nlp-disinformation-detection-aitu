@@ -1,0 +1,105 @@
+{
+  "best_val_macro_f1": 0.2744956086194094,
+  "test_accuracy": 0.284489477786438,
+  "test_macro_f1": 0.28182598268911896,
+  "test_per_class_f1": {
+    "pants-fire": 0.29523809523809524,
+    "false": 0.31334622823984526,
+    "barely-true": 0.24641833810888253,
+    "half-true": 0.25830258302583026,
+    "mostly-true": 0.3244206773618538,
+    "true": 0.2532299741602067
+  },
+  "test_per_class_precision": {
+    "pants-fire": 0.2627118644067797,
+    "false": 0.30337078651685395,
+    "barely-true": 0.31851851851851853,
+    "half-true": 0.2545454545454545,
+    "mostly-true": 0.2916666666666667,
+    "true": 0.2784090909090909
+  },
+  "test_per_class_recall": {
+    "pants-fire": 0.33695652173913043,
+    "false": 0.324,
+    "barely-true": 0.20093457943925233,
+    "half-true": 0.26217228464419473,
+    "mostly-true": 0.3654618473895582,
+    "true": 0.23222748815165878
+  },
+  "test_confusion_matrix": [
+    [
+      31,
+      18,
+      15,
+      11,
+      9,
+      8
+    ],
+    [
+      29,
+      81,
+      24,
+      53,
+      38,
+      25
+    ],
+    [
+      22,
+      49,
+      43,
+      45,
+      32,
+      23
+    ],
+    [
+      20,
+      55,
+      23,
+      70,
+      68,
+      31
+    ],
+    [
+      10,
+      30,
+      18,
+      60,
+      91,
+      40
+    ],
+    [
+      6,
+      34,
+      12,
+      36,
+      74,
+      49
+    ]
+  ],
+  "test_confusion_matrix_labels": [
+    "pants-fire",
+    "false",
+    "barely-true",
+    "half-true",
+    "mostly-true",
+    "true"
+  ],
+  "loss_config": {
+    "type": "ordinal",
+    "ce_weight": 1.0,
+    "emd_weight": 0.5
+  },
+  "seed": 2024,
+  "run_timestamp": "2026-04-27T08:31:46.432769+00:00",
+  "device": "cuda",
+  "environment": {
+    "git_sha": "eb644954344e99b3a11b1491e3392f168a669556",
+    "python_version": "3.12.12",
+    "python_executable": "/usr/bin/python3",
+    "torch_version": "2.10.0+cu128",
+    "transformers_version": "5.0.0",
+    "device": "cuda",
+    "seed": 2024,
+    "run_timestamp": "2026-04-27T08:31:46.432769+00:00"
+  }
+}

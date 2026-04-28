@@ -1,0 +1,105 @@
+{
+  "best_val_macro_f1": 0.2621583426606044,
+  "test_accuracy": 0.2899454403741232,
+  "test_macro_f1": 0.29297975568544593,
+  "test_per_class_f1": {
+    "pants-fire": 0.3687150837988827,
+    "false": 0.34782608695652173,
+    "barely-true": 0.23728813559322035,
+    "half-true": 0.21285140562248997,
+    "mostly-true": 0.25,
+    "true": 0.3411978221415608
+  },
+  "test_per_class_precision": {
+    "pants-fire": 0.3793103448275862,
+    "false": 0.31788079470198677,
+    "barely-true": 0.3,
+    "half-true": 0.22943722943722944,
+    "mostly-true": 0.29508196721311475,
+    "true": 0.27647058823529413
+  },
+  "test_per_class_recall": {
+    "pants-fire": 0.358695652173913,
+    "false": 0.384,
+    "barely-true": 0.19626168224299065,
+    "half-true": 0.19850187265917604,
+    "mostly-true": 0.21686746987951808,
+    "true": 0.44549763033175355
+  },
+  "test_confusion_matrix": [
+    [
+      33,
+      21,
+      13,
+      8,
+      8,
+      9
+    ],
+    [
+      13,
+      96,
+      32,
+      38,
+      19,
+      52
+    ],
+    [
+      16,
+      61,
+      42,
+      39,
+      20,
+      36
+    ],
+    [
+      14,
+      53,
+      36,
+      53,
+      46,
+      65
+    ],
+    [
+      5,
+      36,
+      12,
+      58,
+      54,
+      84
+    ],
+    [
+      6,
+      35,
+      5,
+      35,
+      36,
+      94
+    ]
+  ],
+  "test_confusion_matrix_labels": [
+    "pants-fire",
+    "false",
+    "barely-true",
+    "half-true",
+    "mostly-true",
+    "true"
+  ],
+  "loss_config": {
+    "type": "ordinal",
+    "ce_weight": 1.0,
+    "emd_weight": 0.5
+  },
+  "seed": 1337,
+  "run_timestamp": "2026-04-27T07:25:30.213685+00:00",
+  "device": "cuda",
+  "environment": {
+    "git_sha": "eb644954344e99b3a11b1491e3392f168a669556",
+    "python_version": "3.12.12",
+    "python_executable": "/usr/bin/python3",
+    "torch_version": "2.10.0+cu128",
+    "transformers_version": "5.0.0",
+    "device": "cuda",
+    "seed": 1337,
+    "run_timestamp": "2026-04-27T07:25:30.213685+00:00"
+  }
+}
