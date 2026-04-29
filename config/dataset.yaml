@@ -48,3 +48,8 @@ liar:
     - job
     - state
     - party
+
+reports:
+  base_dir: reports
+  figures_dir: reports/figures
+  predictions_dir: reports/predictions

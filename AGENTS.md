@@ -77,9 +77,12 @@ nlp-disinformation-detection-aitu/
 ├── src/disinfo_detection/             ← core importable package
 │   ├── data_loader.py                 ← load_liar(split), get_splits(), label maps
 │   ├── preprocessing.py               ← clean_text_for_tfidf / clean_text_for_transformer / credibility features
-│   ├── evaluation.py                  ← compute_metrics(), append_run_history(), plot_training_history()
+│   ├── evaluation.py                  ← compute_metrics(), append_run_history(), plot_training_history(), aggregate_seed_summaries()
+│   ├── losses.py                      ← OrdinalAwareLoss (CE + squared EMD), build_loss_module()
+│   ├── trainer.py                     ← BaseTrainer with shared train_epoch/evaluate/save/load
+│   ├── training_utils.py              ← shared script plumbing (seeds, device, checkpoints, multi-seed aggregation)
 │   ├── models_baseline.py             ← TFIDFBaseline (NB / SVM / RF)
-│   ├── models_transformers.py         ← LIARDataset + RoBERTaClassifier
+│   ├── models_transformers.py         ← LIARDataset + RoBERTaClassifier (subclasses BaseTrainer)
 │   ├── metadata_features.py           ← deterministic hashing for categorical metadata, dense matrix builder
 │   ├── datasets_hybrid.py             ← HybridLIARDataset (text + metadata)
 │   └── models_hybrid.py               ← HybridClassifier, MetadataBranch, HybridTrainer (THE THESIS NOVELTY)
@@ -89,11 +92,16 @@ nlp-disinformation-detection-aitu/
 │   ├── HYBRID_MODEL.md                ← architecture and design decisions for the hybrid model
 │   └── KAGGLE_TRAINING.md             ← clean remote GPU training guide
 │
-└── tests/                             ← pytest suite (16/16 green on main)
+└── tests/                             ← pytest suite (61/61 green on main)
     ├── test_preprocessing.py
     ├── test_baseline.py
     ├── test_transformers.py
-    └── test_hybrid.py
+    ├── test_hybrid.py
+    ├── test_losses.py
+    ├── test_leakage_verification.py
+    ├── test_bootstrap_ci.py
+    ├── test_artifact_workflow.py
+    └── test_plot_*.py
 ```
 
 ---
@@ -108,7 +116,7 @@ nlp-disinformation-detection-aitu/
 | Text-only RoBERTa (`models_transformers.py`, `scripts/train_transformer.py`) | ✅ Implemented + tuned |
 | Hybrid text + metadata model (`models_hybrid.py`, `metadata_features.py`, `datasets_hybrid.py`, `scripts/train_hybrid.py`) | ✅ Implemented, tested |
 | Evaluation utilities (`evaluation.py`) | ✅ Implemented |
-| Tests | ✅ 16/16 passing (`make test`) |
+| Tests | ✅ 61/61 passing (`make test`) |
 | Full end-to-end local training on Apple Silicon | ⏳ Pending (author needs to run `make train-all`) |
 | Final numbers in MSRW 2 §5 | ⏳ `[to be filled]` placeholders remain until a full run completes |
 | IEEE SIST 2026 paper draft | ⏳ Scaffolded but not aligned with final numbers yet |
@@ -406,3 +414,28 @@ All final metrics in the thesis and paper are reported on the **TEST split (1 28
 - Added `scripts/import_results_archive.py` and `scripts/package_overleaf.py`
   plus `make import-results`, `make package-results-with-models`, and
   `make package-overleaf` for the local archive-to-paper workflow.
+
+### [2026-04-28] — Training scaffolding deduplicated
+
+- New `src/disinfo_detection/trainer.py::BaseTrainer` collapses the duplicated
+  `train_epoch` / `evaluate` / `save` / `load` bodies; `RoBERTaClassifier` and
+  `HybridTrainer` now subclass it and only override `_split_batch` and
+  `_compute_logits`.
+- New `src/disinfo_detection/training_utils.py` centralises seed/device
+  helpers, class-weight computation, processed-split loading, runtime cache
+  setup, the per-epoch loop with early stopping, training-history persistence,
+  multi-seed aggregation, and the test-time persistence tail
+  (`evaluate_and_persist_test`).
+- `scripts/train_baseline.py`, `scripts/train_transformer.py`, and
+  `scripts/train_hybrid.py` reduced from a combined 1235 to ~926 lines, all
+  duplicated helpers removed.
+- `config/dataset.yaml` gained a `reports.{base_dir,figures_dir,predictions_dir}`
+  block; the three training scripts read from it instead of hardcoding
+  `Path("reports/figures")` / `Path("reports/predictions")`.
+- `HybridClassifier._pool_cls` no longer takes the unused `attention_mask`
+  argument; trainer-level `label_smoothing` / `class_weights` attributes
+  removed (the loss module owns them); `MetadataBranch.num_total_buckets`
+  attribute removed.
+- `build_categorical_matrix` now raises `KeyError` on entirely missing
+  columns, matching `build_dense_matrix`.
+- Tests: 61/61 green (was 51/51 before this refactor).

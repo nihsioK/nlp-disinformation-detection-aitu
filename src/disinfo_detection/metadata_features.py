@@ -165,18 +165,20 @@ def build_categorical_matrix(
     Each column is hashed against the per-field bucket size declared by
     `spec`, so values across columns can live in different ranges. The model
     re-aligns them via `MetadataBranch.field_offsets` before embedding lookup.
+    NaN cells inside a column hash to the empty-string bucket; an entirely
+    missing column raises `KeyError`, mirroring `build_dense_matrix`.
     """
+
+    missing = [name for name in spec.categorical_fields if name not in df.columns]
+    if missing:
+        raise KeyError(
+            "DataFrame is missing required categorical metadata columns: "
+            f"{missing}. Re-run scripts/preprocess.py or fix the metadata config."
+        )
 
     columns: list[np.ndarray] = []
     for field_name in spec.categorical_fields:
         bucket_size = spec.buckets_for(field_name)
-        if field_name not in df.columns:
-            # Field missing entirely — hash the empty string so the model sees
-            # a consistent "unknown" bucket across the whole split.
-            columns.append(
-                np.full(len(df), _hash_token("", bucket_size, spec.hash_salt), dtype=np.int64)
-            )
-            continue
         columns.append(
             hash_categorical_field(df[field_name], num_buckets=bucket_size, hash_salt=spec.hash_salt)
         )

@@ -21,13 +21,6 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-MATPLOTLIB_CACHE_DIR = REPO_ROOT / ".cache" / "matplotlib"
-MATPLOTLIB_CACHE_DIR.mkdir(parents=True, exist_ok=True)
-FONTCONFIG_CACHE_DIR = REPO_ROOT / ".cache" / "fontconfig"
-FONTCONFIG_CACHE_DIR.mkdir(parents=True, exist_ok=True)
-os.environ.setdefault("MPLCONFIGDIR", str(MATPLOTLIB_CACHE_DIR))
-os.environ.setdefault("XDG_CACHE_HOME", str(REPO_ROOT / ".cache"))
-
 from src.disinfo_detection.evaluation import (
     append_run_history,
     build_env_record,
@@ -42,22 +35,19 @@ from src.disinfo_detection.models_baseline import (
     load_baseline_config,
     load_dataset_config,
 )
+from src.disinfo_detection.training_utils import (
+    load_processed_split,
+    setup_runtime_caches,
+)
 
+
+setup_runtime_caches(REPO_ROOT)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s — %(levelname)s — %(message)s")
 logger = logging.getLogger(__name__)
 
 CLASSIFIER_TYPES = ["svm", "naive_bayes", "random_forest"]
 ENABLE_FIGURES = os.environ.get("ENABLE_FIGURES", "0") == "1"
-
-
-def load_processed_split(split_name: str, processed_dir: Path) -> pd.DataFrame:
-    split_path = processed_dir / f"{split_name}.pkl"
-    if not split_path.exists():
-        raise FileNotFoundError(
-            f"Processed split not found at {split_path}. Run scripts/preprocess.py first."
-        )
-    return pd.read_pickle(split_path)
 
 
 def main() -> None:
@@ -79,10 +69,11 @@ def main() -> None:
     X_test = test_df["statement_clean"].tolist()
     y_test = test_df["label_id"].tolist()
 
+    reports_cfg = dataset_config.get("reports", {})
     models_dir = Path("models")
-    reports_dir = Path("reports")
-    figures_dir = reports_dir / "figures"
-    predictions_dir = reports_dir / "predictions"
+    reports_dir = Path(reports_cfg.get("base_dir", "reports"))
+    figures_dir = Path(reports_cfg.get("figures_dir", reports_dir / "figures"))
+    predictions_dir = Path(reports_cfg.get("predictions_dir", reports_dir / "predictions"))
     models_dir.mkdir(parents=True, exist_ok=True)
     reports_dir.mkdir(parents=True, exist_ok=True)
     predictions_dir.mkdir(parents=True, exist_ok=True)
